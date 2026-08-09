@@ -1,7 +1,6 @@
 {
   "name": "psi-monitor",
   "version": "1.0.0",
-  "author": "Mike Schermer",
   "description": "Self-hosted PageSpeed Insights monitor. Scheduled scans, score history, and an alerting dashboard. Node + Express + SQLite, deployed via Docker and GitHub Actions.",
   "main": "src/server.js",
   "scripts": {
@@ -13,7 +12,7 @@
     "url": "git+https://github.com/Fullsnackenveloper/psi-monitor.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Mike Schermer",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
