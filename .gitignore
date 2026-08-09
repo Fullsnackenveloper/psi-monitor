@@ -1,0 +1,13 @@
+# Secrets
+.env
+
+# Database files — data lives on the server, never in Git
+*.db
+*.db-journal
+
+# Dependencies — restored by npm install
+node_modules/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
