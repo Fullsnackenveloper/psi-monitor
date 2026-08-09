@@ -54,7 +54,7 @@ That split keeps "build the thing" separate from "run the things," which is why 
 
 **Node.js + Express.** The original logic was already JavaScript, so the port kept the fetch/retry/scoring code largely intact. Express serves both the static dashboard and the JSON API.
 
-**SQLite via Node's built-in `node:sqlite`.** SQLite fits this workload exactly — a single small app with modest, periodic writes — and it needs no separate database container. Using Node's built-in driver means the data layer has **zero third-party dependencies** and no native compilation step. The whole app depends on just two packages: `express` and `node-cron`.
+**SQLite via Node's built-in `node:sqlite`.** SQLite fits this workload exactly, a single small app with modest, periodic writes, and it needs no separate database container. Using Node's built-in driver means the data layer has **zero third-party dependencies** and no native compilation step. The whole app depends on just two packages: `express` and `node-cron`.
 
 **node-cron** replaces the platform's time-based triggers, with a guard so scans can't overlap.
 
@@ -70,7 +70,7 @@ Three tables, and the important decision is that measurements are **append-only*
 - `scans` — one row per scan cycle, with timing and error counts.
 - `checks` — one row per individual measurement (a given site + strategy at a point in time). Never overwritten.
 
-The original stored one row per site and overwrote it each scan, plus a separate tab of averages — which threw away the underlying data. Here, every check is preserved. The dashboard's "current" view is just *each site's latest check* (a query), the trend chart's averages are *computed from the stored checks* (a query), and per-site history over time is available because the data was never discarded.
+The original stored one row per site and overwrote it each scan, plus a separate tab of averages, which threw away the underlying data. Here, every check is preserved. The dashboard's "current" view is just *each site's latest check* (a query), the trend chart's averages are *computed from the stored checks* (a query), and per-site history over time is available because the data was never discarded.
 
 The alert **threshold is not stored in the database.** It lives in configuration and is applied at read time. Storing an `ALERT`/`OK` label would freeze one day's threshold into historical rows; keeping only the raw facts (score, or the error) means changing the threshold reinterprets all history correctly and never requires a data migration.
 
@@ -164,4 +164,4 @@ Dockerfile
 
 ## Notes
 
-A key that authorizes the PageSpeed Insights API is required. The API is free within a generous daily quota; scanning a handful of sites a few times a day stays comfortably inside it. The app treats API failures as data — recording them and moving on — rather than letting one bad response stop a scan.
+A key that authorizes the PageSpeed Insights API is required. The API is free within a generous daily quota; scanning a handful of sites a few times a day stays comfortably inside it. The app treats API failures as data, recording them and moving on, rather than letting one bad response stop a scan.

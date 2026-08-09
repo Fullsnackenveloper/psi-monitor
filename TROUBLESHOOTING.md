@@ -16,17 +16,17 @@ After deploying, the dashboard showed every site in an error state. The scanner 
 ...
 ```
 
-Every site, every strategy, every attempt — all `RATE_LIMITED` (HTTP 429). The app's retry/backoff logic was working exactly as designed: it caught the 429s, backed off, retried, and eventually recorded the failure and moved on. Nothing crashed. But no real scores ever came back.
+Every site, every strategy, every attempt, all `RATE_LIMITED` (HTTP 429). The app's retry/backoff logic was working exactly as designed: it caught the 429s, backed off, retried, and eventually recorded the failure and moved on. Nothing crashed. But no real scores ever came back.
 
 ### First wrong guess: quota exhausted from debugging
 
-The obvious read was that I'd simply burned the API's daily quota during development — dozens of manual scans in a short window. The plan was to stop scanning and let the quota reset overnight.
+The obvious read was that I'd simply burned the API's daily quota during development, dozens of manual scans in a short window. The plan was to stop scanning and let the quota reset overnight.
 
 It didn't reset. The next day, every call still returned 429. A daily quota that doesn't clear after 24 hours isn't a daily quota problem.
 
 ### Second wrong guess: the API isn't enabled
 
-Next theory: the PageSpeed Insights API wasn't enabled on the project, and Google was rejecting calls with a quota-shaped error. Reasonable, but wrong — and I was still guessing instead of reading.
+Next theory: the PageSpeed Insights API wasn't enabled on the project, and Google was rejecting calls with a quota-shaped error. Reasonable, but wrong, and I was still guessing instead of reading.
 
 ### The move that actually worked: read the raw error
 
