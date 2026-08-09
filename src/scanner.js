@@ -3,7 +3,7 @@ const db = require('./db');
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
-const CONCURRENCY = 3; // sites scanned in parallel
+const CONCURRENCY = 1; // sites scanned in parallel
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -66,14 +66,9 @@ async function checkSite(site, scanId) {
 
   for (const strategy of ['mobile', 'desktop']) {
     const { score, error } = await fetchPSIWithRetry(site.url, strategy);
-    db.insertCheck({
-      siteId: site.id,
-      scanId,
-      strategy,
-      score,
-      errorMessage: error,
-    });
+    db.insertCheck({ siteId: site.id, scanId, strategy, score, errorMessage: error });
     if (score === null) hadError = true;
+    await sleep(1500); // gentle pacing to stay under PSI's rate limit
   }
   return hadError;
 }
