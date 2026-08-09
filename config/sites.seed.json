@@ -1,0 +1,7 @@
+[
+  { "url": "https://www.wikipedia.org", "label": "Wikipedia" },
+  { "url": "https://developer.mozilla.org", "label": "MDN Web Docs" },
+  { "url": "https://www.bbc.com", "label": "BBC" },
+  { "url": "https://www.nytimes.com", "label": "NY Times" },
+  { "url": "https://www.reddit.com", "label": "Reddit" }
+]
