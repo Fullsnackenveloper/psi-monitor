@@ -4,6 +4,9 @@
 # Database files — data lives on the server, never in Git
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+data/
 
 # Dependencies — restored by npm install
 node_modules/

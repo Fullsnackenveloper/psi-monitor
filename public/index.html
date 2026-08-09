@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PSI Monitor</title>
+  <style>
+    :root {
+      --accent: #2563EB;
+      --accent-soft: #EFF4FF;
+      --bg: #F6F7F9;
+      --card: #FFFFFF;
+      --text: #1F2430;
+      --text-muted: #6B7280;
+      --border: #E3E6EB;
+      --border-light: #EFF1F4;
+      --green: #15803D;
+      --green-bg: rgba(21,128,61,0.08);
+      --red: #B91C1C;
+      --red-bg: rgba(185,28,28,0.06);
+      --amber: #B45309;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); padding: 2rem; }
+    .wrap { max-width: 960px; margin: 0 auto; }
+
+    .page-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 1.75rem; flex-wrap: wrap; gap: 8px; }
+    .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+    .page-links { display: flex; gap: 14px; font-size: 13px; }
+    .page-links a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .page-links a:hover { text-decoration: underline; }
+
+    .section-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 10px; }
+
+    .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 1.5rem; }
+    .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+    .chart-meta { font-size: 12px; color: var(--text-muted); }
+    .chart-legend { display: flex; gap: 16px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .chart-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+    .ps-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem; }
+    .ps-meta { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+    .ps-btn { font-size: 12px; font-weight: 700; padding: 8px 18px; border: 1px solid var(--border); border-radius: 20px; background: var(--card); color: var(--text-muted); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+    .ps-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .ps-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .ps-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+    @media (max-width: 640px) { .ps-stats { grid-template-columns: repeat(2, 1fr); } body { padding: 1rem; } }
+    .ps-stat { background: var(--card); border-radius: 10px; padding: 14px 16px; border: 1px solid var(--border); }
+    .ps-stat-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin-bottom: 6px; }
+    .ps-stat-val { font-size: 26px; font-weight: 800; }
+    .ps-stat-val.danger { color: var(--red); }
+
+    .filter-row { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .filter-row input { flex: 1; font-size: 13px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); outline: none; }
+    .filter-row input:focus { border-color: var(--accent); }
+    select { font-size: 13px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); cursor: pointer; }
+
+    .ps-table-wrap { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+    thead { background: var(--bg); }
+    th { text-align: left; padding: 10px 16px; font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.09em; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+    th:hover { color: var(--text); }
+    td { padding: 10px 16px; border-bottom: 1px solid var(--border-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--accent-soft); }
+
+    .score { font-weight: 800; }
+    .good { color: var(--green); }
+    .warn { color: var(--amber); }
+    .bad  { color: var(--red); }
+
+    .badge { display: inline-block; font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge.ok    { background: var(--green-bg); color: var(--green); }
+    .badge.alert { background: var(--red-bg); color: var(--red); }
+    .badge.err   { background: var(--border-light); color: var(--text-muted); cursor: help; }
+
+    .site-label { font-weight: 600; }
+    .site-url { color: var(--text-muted); font-size: 12px; }
+    .col-url { width: 34%; } .col-score { width: 13%; } .col-status { width: 13%; } .col-date { width: 27%; }
+    .sort-arrow { opacity: 0.3; font-size: 9px; margin-left: 3px; }
+    .sort-arrow.active { opacity: 1; color: var(--accent); }
+    .ps-empty { padding: 2.5rem; text-align: center; color: var(--text-muted); font-size: 14px; }
+    .spin { display: inline-block; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <div class="page-header">
+      <div class="page-title">PSI Monitor</div>
+      <div class="page-links">
+        <a href="https://github.com/Fullsnackenveloper/psi-monitor" target="_blank" rel="noopener">GitHub ↗</a>
+        <a href="https://msschermer.us">← Portfolio</a>
+      </div>
+    </div>
+
+    <div class="section-label">Score Trend</div>
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-meta" id="chart-subtitle">Loading history…</div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#2563EB"></div> Mobile</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#15803D"></div> Desktop</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#E3E6EB;border:1px dashed #6B7280"></div> Threshold</div>
+        </div>
+      </div>
+      <div id="chart-container"></div>
+    </div>
+
+    <div class="ps-header">
+      <div>
+        <div class="section-label" style="margin-bottom:2px">Monitored Sites</div>
+        <div class="ps-meta" id="last-refreshed">Loading…</div>
+      </div>
+      <button class="ps-btn" id="refresh-btn" onclick="loadAll()">
+        <span id="spin-icon">&#8635;</span> Refresh
+      </button>
+    </div>
+
+    <div class="ps-stats">
+      <div class="ps-stat"><div class="ps-stat-label">Total Sites</div><div class="ps-stat-val" id="stat-total">—</div></div>
+      <div class="ps-stat"><div class="ps-stat-label">Alerts</div><div class="ps-stat-val danger" id="stat-alerts">—</div></div>
+      <div class="ps-stat"><div class="ps-stat-label">Avg Mobile</div><div class="ps-stat-val" id="stat-mobile">—</div></div>
+      <div class="ps-stat"><div class="ps-stat-label">Avg Desktop</div><div class="ps-stat-val" id="stat-desktop">—</div></div>
+    </div>
+
+    <div class="filter-row">
+      <input type="text" id="search" placeholder="Filter by URL or label…" oninput="applyFilters()" />
+      <select id="status-filter" onchange="applyFilters()">
+        <option value="all">All statuses</option>
+        <option value="alert">Alerts only</option>
+        <option value="ok">OK only</option>
+        <option value="error">Errors only</option>
+      </select>
+    </div>
+
+    <div class="ps-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-url"    onclick="sortBy('url')">Site <span class="sort-arrow" id="arr-url"></span></th>
+            <th class="col-score"  onclick="sortBy('mobile')">Mobile <span class="sort-arrow active" id="arr-mobile">▲</span></th>
+            <th class="col-score"  onclick="sortBy('desktop')">Desktop <span class="sort-arrow" id="arr-desktop"></span></th>
+            <th class="col-status" onclick="sortBy('status')">Status <span class="sort-arrow" id="arr-status"></span></th>
+            <th class="col-date">Last Checked</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="5" class="ps-empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    let ALL = [], filtered = [], THRESHOLD = 70;
+    let sortKey = 'mobile', sortDir = 1;
+
+    // ── Trend chart — your original SVG renderer, threshold now dynamic ──
+    function renderChart(history) {
+      const container = document.getElementById('chart-container');
+      const subtitle  = document.getElementById('chart-subtitle');
+
+      if (!history || history.length < 2) {
+        container.innerHTML = '<div class="chart-empty">Not enough history yet — the trend appears after a few scan cycles.</div>';
+        subtitle.textContent = history && history.length === 1 ? '1 scan so far · needs 2+ to draw a line' : 'No history yet';
+        return;
+      }
+
+      const fmt = (iso) => new Date(iso.replace(' ', 'T') + 'Z')
+        .toLocaleDateString([], { month: 'short', day: 'numeric' });
+      const pointsData = history.map(h => ({
+        date: fmt(h.startedAt), avgMobile: h.avgMobile ?? 0, avgDesktop: h.avgDesktop ?? 0
+      }));
+
+      subtitle.textContent = pointsData.length + ' scans · ' + pointsData[0].date + ' → ' + pointsData[pointsData.length - 1].date;
+
+      const W = 860, H = 180, PAD = { top: 16, right: 24, bottom: 32, left: 36 };
+      const chartW = W - PAD.left - PAD.right, chartH = H - PAD.top - PAD.bottom;
+
+      const allScores = pointsData.flatMap(d => [d.avgMobile, d.avgDesktop]);
+      const minScore  = Math.max(0,   Math.floor(Math.min(...allScores, THRESHOLD) / 10) * 10 - 5);
+      const maxScore  = Math.min(100, Math.ceil( Math.max(...allScores) / 10) * 10 + 5);
+
+      const sx = (i) => PAD.left + (i / (pointsData.length - 1)) * chartW;
+      const sy = (s) => PAD.top + chartH - ((s - minScore) / (maxScore - minScore)) * chartH;
+      const pts = (key) => pointsData.map((d, i) => sx(i) + ',' + sy(d[key])).join(' ');
+
+      const yTicks = [];
+      for (let v = minScore; v <= maxScore; v += 10) yTicks.push(v);
+      const xStep = pointsData.length <= 8 ? 1 : Math.ceil(pointsData.length / 8);
+
+      let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">`;
+      yTicks.forEach(v => {
+        const y = sy(v);
+        svg += `<line x1="${PAD.left}" y1="${y}" x2="${W - PAD.right}" y2="${y}" stroke="#EFF1F4" stroke-width="1"/>`;
+        svg += `<text x="${PAD.left - 6}" y="${y + 4}" font-size="10" fill="#6B7280" text-anchor="end">${v}</text>`;
+      });
+      const ty = sy(THRESHOLD);
+      svg += `<line x1="${PAD.left}" y1="${ty}" x2="${W - PAD.right}" y2="${ty}" stroke="#E3E6EB" stroke-width="1.5" stroke-dasharray="4,3"/>`;
+      svg += `<text x="${W - PAD.right + 4}" y="${ty + 4}" font-size="9" fill="#6B7280">${THRESHOLD}</text>`;
+      pointsData.forEach((d, i) => {
+        if (i % xStep !== 0 && i !== pointsData.length - 1) return;
+        svg += `<text x="${sx(i)}" y="${H - 4}" font-size="10" fill="#6B7280" text-anchor="middle">${d.date}</text>`;
+      });
+      svg += `<polyline points="${pts('avgDesktop')}" fill="none" stroke="#15803D" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+      svg += `<polyline points="${pts('avgMobile')}" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+      pointsData.forEach((d, i) => {
+        svg += `<circle cx="${sx(i)}" cy="${sy(d.avgDesktop)}" r="3.5" fill="#15803D" stroke="#fff" stroke-width="1.5"/>`;
+        svg += `<circle cx="${sx(i)}" cy="${sy(d.avgMobile)}" r="3.5" fill="#2563EB" stroke="#fff" stroke-width="1.5"/>`;
+        if (i === pointsData.length - 1) {
+          svg += `<text x="${sx(i) + 6}" y="${sy(d.avgDesktop) + 4}" font-size="10" fill="#15803D" font-weight="700">${d.avgDesktop}</text>`;
+          svg += `<text x="${sx(i) + 6}" y="${sy(d.avgMobile) + 4}" font-size="10" fill="#2563EB" font-weight="700">${d.avgMobile}</text>`;
+        }
+      });
+      svg += `</svg>`;
+      container.innerHTML = svg;
+    }
+
+    // ── Table — your original logic, fed by fetch instead of google.script.run ──
+    function scoreClass(s) {
+      if (typeof s !== 'number') return '';
+      if (s >= THRESHOLD) return 'good';
+      if (s >= THRESHOLD - 20) return 'warn';
+      return 'bad';
+    }
+    function worstScore(r) {
+      return Math.min(typeof r.mobile === 'number' ? r.mobile : 999,
+                      typeof r.desktop === 'number' ? r.desktop : 999);
+    }
+    function fmtDate(v) {
+      if (!v) return '—';
+      return new Date(v.replace(' ', 'T') + 'Z')
+        .toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    function esc(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c =>
+        ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+    function statusBadge(r) {
+      if (r.mobileStatus === 'ERROR' || r.desktopStatus === 'ERROR') {
+        const why = esc(r.mobileError || r.desktopError || 'Unknown error');
+        return `<span class="badge err" title="${why}">Error</span>`;
+      }
+      if (r.mobileStatus === 'ALERT' || r.desktopStatus === 'ALERT') return '<span class="badge alert">Alert</span>';
+      return '<span class="badge ok">OK</span>';
+    }
+    function sortBy(key) {
+      if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+      document.querySelectorAll('.sort-arrow').forEach(el => { el.textContent = ''; el.classList.remove('active'); });
+      const arr = document.getElementById('arr-' + key);
+      if (arr) { arr.textContent = sortDir === 1 ? '▲' : '▼'; arr.classList.add('active'); }
+      render();
+    }
+    function applyFilters() {
+      const q  = document.getElementById('search').value.toLowerCase();
+      const sf = document.getElementById('status-filter').value;
+      filtered = ALL.filter(r => {
+        const hay = (r.url + ' ' + (r.label || '')).toLowerCase();
+        if (q && !hay.includes(q)) return false;
+        const isErr   = r.mobileStatus === 'ERROR' || r.desktopStatus === 'ERROR';
+        const isAlert = r.mobileStatus === 'ALERT' || r.desktopStatus === 'ALERT';
+        if (sf === 'alert' && !isAlert) return false;
+        if (sf === 'ok'    && (isAlert || isErr)) return false;
+        if (sf === 'error' && !isErr) return false;
+        return true;
+      });
+      render();
+    }
+    function render() {
+      const sorted = [...filtered].sort((a, b) => {
+        if (sortKey === 'url') return sortDir * a.url.localeCompare(b.url);
+        let av, bv;
+        if      (sortKey === 'mobile')  { av = typeof a.mobile  === 'number' ? a.mobile  : 999; bv = typeof b.mobile  === 'number' ? b.mobile  : 999; }
+        else if (sortKey === 'desktop') { av = typeof a.desktop === 'number' ? a.desktop : 999; bv = typeof b.desktop === 'number' ? b.desktop : 999; }
+        else                            { av = worstScore(a); bv = worstScore(b); }
+        return sortDir * (av - bv);
+      });
+
+      const body = document.getElementById('table-body');
+      if (!sorted.length) { body.innerHTML = '<tr><td colspan="5" class="ps-empty">No results</td></tr>'; return; }
+
+      body.innerHTML = sorted.map(r => {
+        const host = (() => { try { return new URL(r.url).hostname.replace('www.',''); } catch { return r.url; } })();
+        const name = r.label ? `<span class="site-label">${esc(r.label)}</span> <span class="site-url">· ${esc(host)}</span>` : `<span class="site-url">${esc(host)}</span>`;
+        const mob = typeof r.mobile  === 'number' ? `<span class="score ${scoreClass(r.mobile)}" ${r.mobileError ? `title="${esc(r.mobileError)}"` : ''}>${r.mobile}</span>` : `<span class="site-url" title="${esc(r.mobileError || '')}">—</span>`;
+        const dsk = typeof r.desktop === 'number' ? `<span class="score ${scoreClass(r.desktop)}">${r.desktop}</span>` : `<span class="site-url" title="${esc(r.desktopError || '')}">—</span>`;
+        return `<tr>
+          <td class="col-url" title="${esc(r.url)}">${name}</td>
+          <td class="col-score">${mob}</td>
+          <td class="col-score">${dsk}</td>
+          <td class="col-status">${statusBadge(r)}</td>
+          <td class="col-date" style="font-size:12px;color:var(--text-muted)">${fmtDate(r.lastChecked)}</td>
+        </tr>`;
+      }).join('');
+
+      const nums   = ALL.filter(r => typeof r.mobile === 'number' && typeof r.desktop === 'number');
+      const alerts = ALL.filter(r => r.mobileStatus === 'ALERT' || r.desktopStatus === 'ALERT').length;
+      document.getElementById('stat-total').textContent   = ALL.length;
+      document.getElementById('stat-alerts').textContent  = alerts;
+      document.getElementById('stat-mobile').textContent  = nums.length ? Math.round(nums.reduce((s,r)=>s+r.mobile,0)/nums.length) : '—';
+      document.getElementById('stat-desktop').textContent = nums.length ? Math.round(nums.reduce((s,r)=>s+r.desktop,0)/nums.length) : '—';
+      document.getElementById('last-refreshed').textContent =
+        'Showing ' + filtered.length + ' of ' + ALL.length + ' sites · updated ' +
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // ── Data loading — fetch() replaces google.script.run ──
+    async function loadAll() {
+      const btn = document.getElementById('refresh-btn');
+      const icon = document.getElementById('spin-icon');
+      btn.disabled = true; icon.classList.add('spin');
+      try {
+        const dataRes = await fetch('/api/data');
+        if (!dataRes.ok) throw new Error('API returned ' + dataRes.status);
+        const payload = await dataRes.json();
+        THRESHOLD = payload.threshold ?? 70;
+        ALL = payload.sites; filtered = [...ALL];
+        applyFilters();
+
+        const histRes = await fetch('/api/history');
+        renderChart(histRes.ok ? await histRes.json() : []);
+      } catch (e) {
+        document.getElementById('table-body').innerHTML =
+          '<tr><td colspan="5" class="ps-empty">Failed to load: ' + esc(e.message) + '</td></tr>';
+        document.getElementById('last-refreshed').textContent = 'Error loading data';
+      } finally {
+        btn.disabled = false; icon.classList.remove('spin');
+      }
+    }
+
+    loadAll();
+  </script>
+</body>
+</html>
