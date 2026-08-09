@@ -7,7 +7,7 @@ const router = express.Router();
 // Compute alert status at read time — threshold lives in config, not in data
 function statusOf(score, error) {
   if (error) return 'ERROR';
-  if (score === null || score === undefined) return 'ERROR';
+  if (score === null || score === undefined) return 'PENDING';
   return score < config.threshold ? 'ALERT' : 'OK';
 }
 

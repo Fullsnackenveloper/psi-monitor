@@ -244,6 +244,7 @@
         ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
     }
     function statusBadge(r) {
+      if (r.mobileStatus === 'PENDING' && r.desktopStatus === 'PENDING') return '<span class="badge err">Pending</span>';  
       if (r.mobileStatus === 'ERROR' || r.desktopStatus === 'ERROR') {
         const why = esc(r.mobileError || r.desktopError || 'Unknown error');
         return `<span class="badge err" title="${why}">Error</span>`;
