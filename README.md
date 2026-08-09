@@ -43,8 +43,8 @@ I rebuilt it from scratch as a standalone service so it could run on any server,
 
 Two repositories, by design:
 
-- **psi-monitor** (this repo) — the application. It *builds an image*.
-- **portfolio-infra** — the deployment config (Docker Compose + Caddy). It *runs images*. Its compose file references this app's published image by tag; it contains no application code.
+- **psi-monitor** (this repo) | the application. It *builds an image*.
+- **portfolio-infra** | the deployment config (Docker Compose + Caddy). It *runs images*. Its compose file references this app's published image by tag; it contains no application code.
 
 That split keeps "build the thing" separate from "run the things," which is why a change here flows out as: push to `main` → GitHub Actions builds and publishes the image → the server pulls it.
 

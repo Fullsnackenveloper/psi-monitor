@@ -4,7 +4,7 @@ Real issues hit while building and deploying this project, written up as postmor
 
 ---
 
-## The scans all failed with `RATE_LIMITED` — but nothing was rate-limited
+## The scans all failed with `RATE_LIMITED` but nothing was rate-limited
 
 ### Symptom
 
@@ -70,7 +70,7 @@ Three layers away from anything in the application. The code was correct the ent
 ### The fix
 
 1. Reactivated billing on the project I controlled (a standard pay-as-you-go account; PageSpeed Insights stays free within its daily quota).
-2. Created a fresh API key **in that project** — verifying the project name on the key-creation screen, since keys silently attach to whatever project is selected.
+2. Created a fresh API key **in that project** | verifying the project name on the key-creation screen, since keys silently attach to whatever project is selected.
 3. Corrected the environment file. (A separate, smaller bug had crept in here — see below.)
 4. Re-ran the raw `curl` and got a real `lighthouseResult` back instead of a 429.
 
@@ -87,6 +87,6 @@ Easy to miss under the noise of the larger problem. The habit that catches it: a
 ### Lessons
 
 - **When an API reports "quota exceeded" but usage reads zero, suspect billing or account state before code.** A closed or unverified billing account throttles APIs and reports it as a quota error.
-- **Read the raw error, not the summarized one.** The application had helpfully collapsed the failure to `RATE_LIMITED` and discarded the `project_number` — the single most important clue. One direct `curl` exposed it.
+- **Read the raw error, not the summarized one.** The application had helpfully collapsed the failure to `RATE_LIMITED` and discarded the `project_number`, the single most important clue. One direct `curl` exposed it.
 - **API keys belong to a project, and the project is easy to get wrong.** The identifier in an error message tells you which project a request actually billed against; trust that over which project you *think* the key is from.
-- **Fix one variable at a time.** Waiting for a reset, then toggling an API, then swapping keys — each was a guess. The turnaround came from stopping the guessing and reading ground truth.
+- **Fix one variable at a time.** Waiting for a reset, then toggling an API, then swapping keys, each was a guess. The turnaround came from stopping the guessing and reading ground truth.
