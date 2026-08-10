@@ -28,5 +28,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/fullsnackenveloper/psi-monitor:latest
-            ghcr.io/fullsnackenveloper/psi-monitor:${{ github.sha }}
+            ghcr.io/msschermer/psi-monitor:latest
+            ghcr.io/msschermer/psi-monitor:${{ github.sha }}
