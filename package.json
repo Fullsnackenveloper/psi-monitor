@@ -9,16 +9,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Fullsnackenveloper/psi-monitor.git"
+    "url": "git+https://github.com/msschermer/psi-monitor.git"
   },
   "keywords": [],
   "author": "Mike Schermer",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/Fullsnackenveloper/psi-monitor/issues"
+    "url": "https://github.com/msschermer/psi-monitor/issues"
   },
-  "homepage": "https://github.com/Fullsnackenveloper/psi-monitor#readme",
+  "homepage": "https://github.com/msschermer/psi-monitor#readme",
   "dependencies": {
     "express": "^5.2.1",
     "node-cron": "^4.6.0"
