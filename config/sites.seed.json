@@ -1,12 +1,12 @@
 [
-  { "url": "https://web.dev", "label": "web.dev" },
+  { "url": "https://alltrails.com", "label": "All Trails" },
   { "url": "https://developer.mozilla.org", "label": "MDN Web Docs" },
-  { "url": "https://www.gov.uk", "label": "GOV.UK" },
+  { "url": "https://www.usa.gov", "label": "USA.Gov" },
   { "url": "https://stripe.com", "label": "Stripe" },
   { "url": "https://en.wikipedia.org/wiki/Web_performance", "label": "Wikipedia" },
-  { "url": "https://news.ycombinator.com", "label": "Hacker News" },
+  { "url": "https://odyseaaquarium.com", "label": "Odysea" },
   { "url": "https://www.bbc.com", "label": "BBC" },
   { "url": "https://www.nytimes.com", "label": "NY Times" },
   { "url": "https://www.cnn.com", "label": "CNN" },
-  { "url": "https://msschermer.us", "label": "msschermer.us" }
+  { "url": "https://suzuki.com", "label": "Suzuki" }
 ]
