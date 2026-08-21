@@ -23,9 +23,12 @@ router.get('/api/data', (req, res) => {
     desktopStatus: statusOf(r.desktop, r.desktopError),
     mobileError: r.mobileError,
     desktopError: r.desktopError,
-    lastChecked: r.mobileCheckedAt || r.desktopCheckedAt,
+    lastChecked: [r.mobileCheckedAt, r.desktopCheckedAt]
+      .filter(Boolean)
+      .sort()
+      .at(-1) || null,
   }));
-  res.json({ threshold: config.threshold, sites: rows });
+  res.json({ threshold: config.threshold, scanCron: config.scanCron, sites: rows });
 });
 
 // Trend history — replaces getHistoryData()

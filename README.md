@@ -20,7 +20,8 @@ I rebuilt it from scratch as a standalone service so it could run on any server,
 
 - Scans each configured site for both **mobile** and **desktop** performance scores.
 - Stores **every** measurement, so history is real data rather than a running average.
-- Serves a dashboard with a sortable, filterable table, summary stats, and a score-trend chart.
+- Serves a dashboard with a sortable, filterable table, summary stats, configurable trend ranges, and a score-trend chart.
+- Opens an on-demand per-site history view from any dashboard row, including current scores and change from the prior measurement.
 - Flags any site scoring below a configurable threshold as an **alert**, and surfaces the reason when a scan fails.
 - Runs scans automatically on a cron schedule, unattended.
 - Reports its own health at `/healthz` for the container runtime and reverse proxy.
@@ -116,6 +117,8 @@ Requires Node.js 24+ (for the built-in SQLite support).
 npm install
 cp .env.example .env      # then add your API key
 npm start                 # starts the server + scheduler
+npm run dev               # local server with automatic restarts
+npm test                  # quick pre-push syntax check
 npm run scan              # trigger a scan manually
 ```
 

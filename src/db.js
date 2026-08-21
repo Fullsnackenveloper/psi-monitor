@@ -108,7 +108,8 @@ function getCurrentData() {
 function getHistoryData() {
   return db.prepare(`
     SELECT
-      sc.id, sc.started_at AS startedAt,
+      sc.id, sc.started_at AS startedAt, sc.finished_at AS finishedAt,
+      sc.sites_checked AS sitesChecked, sc.error_count AS errorCount,
       CAST(ROUND(AVG(CASE WHEN c.strategy = 'mobile'  THEN c.score END)) AS INTEGER) AS avgMobile,
       CAST(ROUND(AVG(CASE WHEN c.strategy = 'desktop' THEN c.score END)) AS INTEGER) AS avgDesktop
     FROM scans sc
@@ -122,8 +123,8 @@ function getHistoryData() {
 // Full score history for one site — new capability the Sheet couldn't do
 function getSiteHistory(siteId) {
   return db.prepare(`
-    SELECT strategy, score, error_message AS errorMessage, checked_at AS checkedAt
-    FROM checks WHERE site_id = ? ORDER BY checked_at
+    SELECT scan_id AS scanId, strategy, score, error_message AS errorMessage, checked_at AS checkedAt
+    FROM checks WHERE site_id = ? ORDER BY checked_at, id
   `).all(siteId);
 }
 

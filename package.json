@@ -5,6 +5,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node scripts/check.js",
     "scan": "node src/scanner.js"
   },
   "repository": {
