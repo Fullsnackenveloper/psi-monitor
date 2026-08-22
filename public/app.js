@@ -245,9 +245,7 @@ function deltaMarkup(current, previous) {
   return `<span class="${d > 0 ? 'text-good' : 'text-bad'}">${d > 0 ? '+' : ''}${d}</span>`;
 }
 
-function renderSiteChart(history) {
-  // Pair mobile and desktop checks into scan cycles. Newer records carry scan_id;
-  // legacy records are paired when the two strategies ran within the same scan window.
+function buildHistoryWindow(history) {
   const sortedHistory = [...history].sort((a, b) => {
     const at = parseUtc(a.checkedAt)?.getTime() ?? 0;
     const bt = parseUtc(b.checkedAt)?.getTime() ?? 0;
@@ -321,15 +319,44 @@ function renderSiteChart(history) {
 
   const allScans = groups.sort((a, b) => a.checkedMs - b.checkedMs);
   if (!allScans.length) {
-    return '<div class="chart-empty">No score history available yet.</div>';
+    return {
+      scans: [],
+      scanIssueCount: 0,
+      hasScanIssues: false,
+      rangeLabel: 'Recent history'
+    };
   }
 
   const latestMs = allScans.at(-1).checkedMs;
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
   let scans = allScans.filter(scan => latestMs - scan.checkedMs <= SEVEN_DAYS_MS);
+  let rangeLabel = '7-day history';
 
-  if (scans.length < 2) scans = allScans.slice(-30);
-  else scans = scans.slice(-30);
+  // Sparse older data can still render a useful trend, but don't call it a
+  // seven-day view if we had to reach further back to get enough points.
+  if (scans.length < 2) {
+    scans = allScans.slice(-30);
+    rangeLabel = 'Recent history';
+  } else {
+    scans = scans.slice(-30);
+  }
+
+  // One scheduled cycle = one issue marker/count, even when both strategies fail.
+  const scanIssueCount = scans.filter(scan => scan.mobileError || scan.desktopError).length;
+
+  return {
+    scans,
+    scanIssueCount,
+    hasScanIssues: scanIssueCount > 0,
+    rangeLabel
+  };
+}
+
+function renderSiteChart(historyWindow) {
+  const scans = historyWindow.scans;
+  if (!scans.length) {
+    return '<div class="chart-empty">No score history available yet.</div>';
+  }
 
   const successful = scans.flatMap(s => [s.mobile, s.desktop]).filter(Number.isFinite);
   if (scans.length < 2 || successful.length < 2) {
@@ -355,10 +382,8 @@ function renderSiteChart(history) {
   const timeSpan = Math.max(1, lastMs - firstMs);
   const sx = scan => PAD.left + ((scan.checkedMs - firstMs) / timeSpan) * cw;
 
-  // Successful measurements remain the primary story. If one or more checks
-  // are unavailable between two successful scores, bridge that interval with a
-  // faint dashed segment rather than either pretending the failure never happened
-  // or fragmenting the entire trend line.
+  // Keep successful measurements visually continuous. Intervals containing an
+  // unavailable check are bridged with a faint dashed line.
   const segmentsFor = key => {
     const segments = [];
     let previousSuccess = null;
@@ -395,10 +420,9 @@ function renderSiteChart(history) {
   const mobileColor = '#2563EB';
   const desktopColor = '#078A57';
 
-  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block" role="img" aria-label="Seven-day PageSpeed score history for the selected site">`;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block" role="img" aria-label="${esc(historyWindow.rangeLabel)} PageSpeed score history for the selected site">`;
 
-  const guides = [0, 50, 100];
-  guides.forEach(value => {
+  [0, 50, 100].forEach(value => {
     svg += `<line x1="${PAD.left}" y1="${sy(value)}" x2="${W - PAD.right}" y2="${sy(value)}" stroke="#E5E7EB" stroke-width="1"/>`;
     svg += `<text x="${PAD.left - 7}" y="${sy(value) + 3}" font-size="${axisFont}" fill="#8B8D98" text-anchor="end" font-family="IBM Plex Mono, monospace">${value}</text>`;
   });
@@ -519,8 +543,7 @@ function strategySummary(strategy, site, history) {
 }
 
 function detailBodyMarkup(history, site) {
-  const failureCount = history.filter(h => h.errorMessage).length;
-  const hasFailures = failureCount > 0;
+  const historyWindow = buildHistoryWindow(history);
 
   return `
     <div class="strategy-summary-group">
@@ -531,12 +554,12 @@ function detailBodyMarkup(history, site) {
     <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 font-mono text-[9px] text-app-text-faint sm:mt-4 sm:gap-4 sm:text-[10px]" aria-label="Site history chart legend">
       <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-accent"></span>Mobile</span>
       <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-good"></span>Desktop</span>
-      ${hasFailures ? '<span class="inline-flex items-center gap-1.5"><span class="h-2 w-px rounded-full bg-bad"></span>Failed check</span>' : ''}
+      ${historyWindow.hasScanIssues ? '<span class="inline-flex items-center gap-1.5"><span class="h-2 w-px rounded-full bg-bad"></span>Scan issue</span>' : ''}
     </div>
 
-    <div class="mt-2 min-h-32 rounded-md border border-app-border bg-app-surface p-1.5 sm:min-h-36 sm:p-3">${renderSiteChart(history)}</div>
+    <div class="mt-2 min-h-32 rounded-md border border-app-border bg-app-surface p-1.5 sm:min-h-36 sm:p-3">${renderSiteChart(historyWindow)}</div>
     <p class="mt-2.5 text-[10px] leading-4 text-app-text-faint sm:mt-3 sm:text-[11px] sm:leading-5">
-      7-day history${hasFailures ? ` · ${failureCount} failed check${failureCount === 1 ? '' : 's'}` : ''}
+      ${historyWindow.rangeLabel}${historyWindow.hasScanIssues ? ` · ${historyWindow.scanIssueCount} scan issue${historyWindow.scanIssueCount === 1 ? '' : 's'}` : ''}
     </p>`;
 }
 
@@ -546,24 +569,18 @@ function detailRowMarkup(site) {
     try { return new URL(site.url).hostname.replace('www.', ''); }
     catch { return site.url; }
   })();
-  const host = (() => {
-    try { return new URL(site.url).hostname.replace('www.', ''); }
-    catch { return site.url; }
-  })();
 
   return `
     <tr class="site-detail-row" id="detail-row-${site.id}">
       <td colspan="5" class="!p-0">
-        <div class="detail-reveal overflow-hidden border-b border-app-border bg-app-bg">
-          <section aria-live="polite" aria-labelledby="detail-title-${site.id}">
-            <div class="flex items-center justify-between gap-3 border-b border-app-border bg-app-subtle px-3 py-2.5 sm:px-4 sm:py-3">
-              <div class="min-w-0">
-                <div class="truncate font-mono text-[11px] font-semibold tracking-[0.02em] text-app-text" id="detail-title-${site.id}">Performance history</div>
-                <div class="mt-0.5 truncate text-[10px] text-app-text-faint sm:text-[11px]">${esc(host)}</div>
-              </div>
-              <button class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-app-border bg-app-surface font-mono text-base text-app-text-soft transition hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" type="button" onclick="event.stopPropagation(); closeDetail()" aria-label="Close ${esc(label)} history">×</button>
-            </div>
-            <div class="p-3 sm:p-4" id="detail-body-${site.id}">
+        <div class="detail-reveal relative overflow-hidden border-b border-app-border bg-app-bg">
+          <section aria-label="${esc(label)} performance history">
+            <button
+              class="detail-close"
+              type="button"
+              onclick="event.stopPropagation(); closeDetail(false)"
+              aria-label="Close ${esc(label)} history">×</button>
+            <div class="p-3 pr-12 sm:p-4 sm:pr-14" id="detail-body-${site.id}">
               ${history ? detailBodyMarkup(history, site) : '<div class="py-8 text-center font-mono text-[10px] text-app-text-faint sm:py-10 sm:text-[11px]">Loading performance history…</div>'}
             </div>
           </section>
@@ -662,13 +679,19 @@ function loadMoreSites() {
 function rowKey(event, id) {
   if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault();
+
+    if (selectedSiteId === id) {
+      closeDetail(true);
+      return;
+    }
+
     openSite(id);
   }
 }
 
 async function openSite(id, forceOpen = false) {
   if (!forceOpen && selectedSiteId === id) {
-    closeDetail(true);
+    closeDetail(false);
     return;
   }
 

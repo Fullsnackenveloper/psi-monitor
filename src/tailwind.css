@@ -214,12 +214,19 @@
   }
 
   .site-row:hover > td,
-  .site-row:focus > td,
   .site-row.is-selected > td {
     @apply bg-app-subtle;
   }
 
+  .site-row.is-selected > td {
+    @apply border-b-0;
+  }
+
   .site-row:focus {
+    outline: none;
+  }
+
+  .site-row:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: -2px;
   }
@@ -256,6 +263,10 @@
 
   .detail-reveal {
     animation: detail-reveal .28s cubic-bezier(.2,.75,.25,1) both;
+  }
+
+  .detail-close {
+    @apply absolute right-3 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-md border border-app-border bg-app-surface font-mono text-sm text-app-text-faint transition-colors hover:border-app-border-strong hover:text-app-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:right-4 sm:top-4;
   }
 
   .spin {
@@ -398,9 +409,17 @@
   }
 
   .site-row:hover > td,
-  .site-row:focus > td,
   .site-row.is-selected > td {
     background-color: transparent;
+  }
+
+  .site-row:focus {
+    outline: none;
+  }
+
+  .site-row:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
   }
 
   .site-row.is-selected > td:nth-child(2),
@@ -420,6 +439,7 @@
   /* The detail panel is the continuation of the selected card, not another card. */
   .site-detail-row .detail-reveal {
     @apply rounded-b-lg border-x border-b border-app-border-strong bg-app-bg;
+    border-top: 0;
   }
 
   .strategy-summary-group {
