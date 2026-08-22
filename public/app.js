@@ -4,6 +4,7 @@ const PAGE_SIZE = 5;
 let visibleSiteCount = PAGE_SIZE;
 const SITE_HISTORY_CACHE = new Map();
 const mobileListQuery = window.matchMedia('(max-width: 620px)');
+const compactLayoutQuery = window.matchMedia('(max-width: 820px)');
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -99,43 +100,17 @@ function badge(r) {
   return `<span class="${base} border-good-border bg-good-soft text-good">OK</span>`;
 }
 
-function currentAverages() {
-  const mobile = ALL.filter(r => Number.isFinite(r.mobile)).map(r => r.mobile);
-  const desktop = ALL.filter(r => Number.isFinite(r.desktop)).map(r => r.desktop);
-
-  return {
-    mobile: {
-      value: mobile.length ? Math.round(mobile.reduce((a, b) => a + b, 0) / mobile.length) : null,
-      count: mobile.length,
-    },
-    desktop: {
-      value: desktop.length ? Math.round(desktop.reduce((a, b) => a + b, 0) / desktop.length) : null,
-      count: desktop.length,
-    },
-  };
-}
-
 function updateSummary() {
   const alerts = ALL.filter(r => siteState(r) === 'ALERT').length;
   const errors = ALL.filter(r => siteState(r) === 'ERROR').length;
   const pending = ALL.filter(r => siteState(r) === 'PENDING').length;
-  const avg = currentAverages();
-
-  document.getElementById('stat-total').textContent = ALL.length;
-  document.getElementById('stat-mobile').textContent = avg.mobile.value ?? '—';
-  document.getElementById('stat-desktop').textContent = avg.desktop.value ?? '—';
-  document.getElementById('stat-total-note').textContent = pending ? `${pending} pending` : (ALL.length === 1 ? 'active target' : 'active targets');
-  document.getElementById('stat-mobile-note').textContent =
-    `${avg.mobile.count}/${ALL.length} scored · target ≥${THRESHOLD}`;
-  document.getElementById('stat-desktop-note').textContent =
-    `${avg.desktop.count}/${ALL.length} scored · target ≥${THRESHOLD}`;
 
   const state = document.getElementById('runtime-state');
   const dot = document.getElementById('snapshot-dot');
   const meta = document.getElementById('snapshot-meta');
   const stale = snapshotIsStale(LATEST_SCAN, SCAN_CRON);
 
-  dot.className = 'h-2 w-2 rounded-full';
+  dot.className = 'h-2 w-2 shrink-0 rounded-full';
   state.className = 'font-medium';
 
   const secondary = [];
@@ -363,7 +338,7 @@ function renderSiteChart(historyWindow) {
     return '<div class="chart-empty">Not enough successful checks for a site trend yet.</div>';
   }
 
-  const compactChart = mobileListQuery.matches;
+  const compactChart = compactLayoutQuery.matches;
   const W = compactChart ? 520 : 900;
   const H = compactChart ? 170 : 156;
   const PAD = compactChart
@@ -573,14 +548,9 @@ function detailRowMarkup(site) {
   return `
     <tr class="site-detail-row" id="detail-row-${site.id}">
       <td colspan="5" class="!p-0">
-        <div class="detail-reveal relative overflow-hidden border-b border-app-border bg-app-bg">
+        <div class="detail-reveal overflow-hidden border-b border-app-border bg-app-bg">
           <section aria-label="${esc(label)} performance history">
-            <button
-              class="detail-close"
-              type="button"
-              onclick="event.stopPropagation(); closeDetail(false)"
-              aria-label="Close ${esc(label)} history">×</button>
-            <div class="p-3 pr-12 sm:p-4 sm:pr-14" id="detail-body-${site.id}">
+            <div class="p-3 sm:p-4" id="detail-body-${site.id}">
               ${history ? detailBodyMarkup(history, site) : '<div class="py-8 text-center font-mono text-[10px] text-app-text-faint sm:py-10 sm:text-[11px]">Loading performance history…</div>'}
             </div>
           </section>
@@ -657,17 +627,11 @@ function renderTable() {
   moreWrap.hidden = !isMobile || remaining === 0;
   if (remaining) moreBtn.textContent = `Load more (${remaining})`;
 
-  const showing = isMobile ? visible.length : sorted.length;
   const meta = document.getElementById('site-list-meta');
-
-  if (isMobile) {
-    meta.textContent = filtered.length === ALL.length
-      ? `${showing} of ${filtered.length} sites`
-      : `${showing} of ${filtered.length} matches`;
+  if (filtered.length === ALL.length) {
+    meta.textContent = `${ALL.length} ${ALL.length === 1 ? 'site' : 'sites'} total`;
   } else {
-    meta.textContent = filtered.length === ALL.length
-      ? `${ALL.length} sites`
-      : `${filtered.length} of ${ALL.length} sites`;
+    meta.textContent = `${filtered.length} ${filtered.length === 1 ? 'match' : 'matches'} · ${ALL.length} total`;
   }
 }
 
@@ -755,11 +719,13 @@ function handleViewportChange() {
   renderTable();
 }
 
-if (mobileListQuery.addEventListener) {
-  mobileListQuery.addEventListener('change', handleViewportChange);
-} else {
-  mobileListQuery.addListener(handleViewportChange);
+function addMediaListener(query, handler) {
+  if (query.addEventListener) query.addEventListener('change', handler);
+  else query.addListener(handler);
 }
+
+addMediaListener(mobileListQuery, handleViewportChange);
+addMediaListener(compactLayoutQuery, handleViewportChange);
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && selectedSiteId) {

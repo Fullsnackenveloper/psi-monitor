@@ -86,7 +86,7 @@
 </head>
 
 <body class="blueprint min-h-screen bg-paper font-sans text-ink antialiased">
-<a class="skip-link" href="#sites-title">Skip to monitored sites</a>
+<a class="skip-link" href="#site-results">Skip to site results</a>
 
 <div class="mx-auto w-full max-w-[1080px] px-[clamp(1.25rem,5vw,4rem)] pb-16">
   <header class="flex flex-wrap items-end justify-between gap-4 border-b border-ink py-7">
@@ -101,53 +101,33 @@
   </header>
 
   <main class="mt-6 overflow-hidden rounded-lg border border-app-border-strong border-t-4 border-t-app-text bg-app-surface shadow-[0_18px_44px_rgba(28,32,36,0.09),0_2px_5px_rgba(28,32,36,0.06)]" aria-label="Performance monitoring dashboard">
-    <section class="border-b border-app-border bg-app-subtle px-4 py-3 sm:px-5" aria-label="Performance snapshot">
-      <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <span class="pt-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-app-text-soft">Performance snapshot</span>
-        <div class="ml-auto text-right">
-          <span class="inline-flex items-center justify-end gap-2 text-[11px] font-medium text-app-text-soft" aria-live="polite">
-            <span id="snapshot-dot" class="h-2 w-2 rounded-full bg-pending-dot" aria-hidden="true"></span>
+    <section class="tool-header border-b border-app-border bg-app-subtle px-4 py-3.5 sm:px-5 sm:py-4" aria-label="Performance Monitor status">
+      <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-5">
+        <div class="min-w-0">
+          <h2 class="font-mono text-[13px] font-semibold tracking-[0.04em] text-app-text sm:text-[14px]">Performance Monitor</h2>
+          <p class="mt-1 max-w-[620px] text-[10.5px] leading-[1.45] text-app-text-faint sm:text-[11px]">Automated PageSpeed Insights checks with historical scores and threshold alerts</p>
+        </div>
+        <div class="min-w-0 sm:max-w-[300px] sm:text-right">
+          <span class="inline-flex items-center gap-2 text-[10.5px] font-medium text-app-text-soft sm:justify-end sm:text-[11px]" aria-live="polite">
+            <span id="snapshot-dot" class="h-2 w-2 shrink-0 rounded-full bg-pending-dot" aria-hidden="true"></span>
             <span id="runtime-state">Loading latest measurements</span>
           </span>
-          <span class="mt-0.5 block font-mono text-[9px] text-app-text-faint" id="snapshot-meta">Last scan —</span>
+          <span class="mt-0.5 block font-mono text-[8.5px] leading-4 text-app-text-faint sm:text-[9px]" id="snapshot-meta">Last scan —</span>
         </div>
       </div>
     </section>
 
-    <section class="grid grid-cols-3 border-b border-app-border bg-app-bg" aria-label="Current performance summary">
-      <div class="metric-summary">
-        <span class="metric-label">Sites</span>
-        <span class="metric-value" id="stat-total">—</span>
-        <span class="metric-note" id="stat-total-note">active targets</span>
-      </div>
-      <div class="metric-summary">
-        <span class="metric-label">Avg mobile</span>
-        <span class="metric-value" id="stat-mobile">—</span>
-        <span class="metric-note" id="stat-mobile-note">— scored</span>
-      </div>
-      <div class="metric-summary">
-        <span class="metric-label">Avg desktop</span>
-        <span class="metric-value" id="stat-desktop">—</span>
-        <span class="metric-note" id="stat-desktop-note">— scored</span>
-      </div>
-    </section>
-
-    <section class="bg-app-surface pt-4" aria-labelledby="sites-title">
-      <div class="mx-3 mb-3 flex items-center justify-between gap-3 border-b border-app-border pb-2.5 sm:mx-4 sm:items-end">
-        <div class="min-w-0">
-          <h2 class="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-app-text-soft" id="sites-title">Monitored sites</h2>
-          <p class="mt-1 hidden text-[11px] text-app-text-faint sm:block">Latest completed scan. Select a site for its measurement history.</p>
-        </div>
-        <span class="shrink-0 whitespace-nowrap font-mono text-[9px] text-app-text-faint sm:text-[10px]" id="site-list-meta">Loading</span>
-      </div>
-
-      <div class="mx-3 mb-3 grid grid-cols-2 gap-2 sm:mx-4 sm:flex sm:flex-wrap sm:items-center sm:rounded-lg sm:border sm:border-app-border sm:bg-app-surface sm:p-2 sm:shadow-[0_1px_2px_rgba(28,32,36,0.04)]">
-        <div class="relative col-span-2 min-w-0 sm:min-w-[220px] sm:flex-1">
-          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-app-text-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"></circle>
-            <path d="m20 20-3.4-3.4"></path>
-          </svg>
-          <input class="h-10 w-full rounded-md border border-app-border bg-app-surface pl-9 pr-3 text-sm text-app-text outline-none transition placeholder:text-app-text-faint hover:border-app-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10" type="search" id="search" placeholder="Filter by site" oninput="applyFilters()" aria-label="Filter sites">
+    <section class="bg-app-surface pt-3" aria-label="Site performance">
+      <div class="site-toolbar mx-3 mb-3 grid grid-cols-2 gap-2 sm:mx-4 sm:flex sm:flex-wrap sm:items-center sm:rounded-lg sm:border sm:border-app-border sm:bg-app-surface sm:p-2 sm:shadow-[0_1px_2px_rgba(28,32,36,0.04)]" id="site-controls">
+        <div class="site-toolbar-search col-span-2 flex min-w-0 items-center gap-3 sm:min-w-[320px] sm:flex-1">
+          <div class="relative min-w-0 flex-1">
+            <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-app-text-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-3.4-3.4"></path>
+            </svg>
+            <input class="h-10 w-full rounded-md border border-app-border bg-app-surface pl-9 pr-3 text-sm text-app-text outline-none transition placeholder:text-app-text-faint hover:border-app-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10" type="search" id="search" placeholder="Filter by site" oninput="applyFilters()" aria-label="Filter sites">
+          </div>
+          <span class="site-count shrink-0 whitespace-nowrap font-mono text-[9px] text-app-text-faint sm:text-[10px]" id="site-list-meta">Loading</span>
         </div>
 
         <select class="h-10 w-full min-w-0 rounded-md border border-app-border bg-app-surface px-3 pr-9 text-sm text-app-text outline-none transition hover:border-app-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10 sm:w-auto sm:min-w-[150px]" id="status-filter" onchange="applyFilters()" aria-label="Filter by status">
@@ -166,7 +146,7 @@
         </button>
       </div>
 
-      <div class="table-shell" id="table-wrap" tabindex="0" role="region" aria-label="Monitored sites table">
+      <div class="table-shell" id="site-results" tabindex="0" role="region" aria-label="Site performance results">
         <table class="w-full min-w-[650px] table-fixed border-collapse text-[12.5px]" id="sites-table">
           <thead class="bg-app-subtle">
             <tr class="border-b border-app-border">

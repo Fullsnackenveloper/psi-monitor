@@ -49,7 +49,14 @@ try {
   process.exit(1);
 }
 
-for (const id of ['runtime-state', 'snapshot-meta', 'sites-title', 'site-list-meta', 'table-body', 'app-version']) {
+for (const removedCopy of ['Performance snapshot', 'Monitored sites', 'Latest completed scan. Select a site for its measurement history.']) {
+  if (html.includes(removedCopy)) {
+    console.error(`Dashboard still contains removed UI copy: ${removedCopy}`);
+    process.exit(1);
+  }
+}
+
+for (const id of ['runtime-state', 'snapshot-meta', 'site-controls', 'site-list-meta', 'site-results', 'table-body', 'app-version']) {
   if (!html.includes(`id="${id}"`)) {
     console.error(`Dashboard is missing required element #${id}.`);
     process.exit(1);
