@@ -1,6 +1,6 @@
 {
   "name": "psi-monitor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Self-hosted Performance Monitor for automated Google PageSpeed Insights checks, score history, threshold alerts, and per-site trends.",
   "main": "src/server.js",
   "scripts": {
