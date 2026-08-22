@@ -3,77 +3,133 @@ const db = require('./db');
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
+const REQUEST_TIMEOUT_MS = 30000;
 const CONCURRENCY = 1; // sites scanned in parallel
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ── Single PSI call ───────────────────────────────────────────────
+function retryAfterMs(res) {
+  const value = res.headers.get('retry-after');
+  if (!value) return null;
+
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? null : Math.max(0, date - Date.now());
+}
+
 async function fetchPSI(url, strategy) {
-  const endpoint =
-    'https://www.googleapis.com/pagespeedonline/v5/runPagespeed' +
-    `?url=${encodeURIComponent(url)}&strategy=${strategy}&key=${config.apiKey}`;
+  const endpoint = new URL('https://www.googleapis.com/pagespeedonline/v5/runPagespeed');
+  endpoint.searchParams.set('url', url);
+  endpoint.searchParams.set('strategy', strategy);
+  endpoint.searchParams.set('category', 'performance');
+  if (config.apiKey) endpoint.searchParams.set('key', config.apiKey);
 
-  const res = await fetch(endpoint);
+  let res;
+  try {
+    res = await fetch(endpoint, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+  } catch (error) {
+    const timedOut = error?.name === 'TimeoutError' || error?.name === 'AbortError';
+    return {
+      score: null,
+      error: timedOut ? 'REQUEST_TIMEOUT' : `FETCH_FAILED: ${error.message}`,
+      retryable: true,
+      retryAfterMs: null,
+    };
+  }
 
   if (res.status === 429) {
-    return { score: null, error: 'RATE_LIMITED' };
+    return {
+      score: null,
+      error: 'RATE_LIMITED',
+      retryable: true,
+      retryAfterMs: retryAfterMs(res),
+    };
   }
+
   if (!res.ok) {
-    const body = (await res.text()).slice(0, 200);
-    return { score: null, error: `HTTP_${res.status}: ${body}` };
+    const body = (await res.text()).replace(/\s+/g, ' ').slice(0, 200);
+    return {
+      score: null,
+      error: `HTTP_${res.status}${body ? `: ${body}` : ''}`,
+      retryable: res.status >= 500,
+      retryAfterMs: null,
+    };
   }
 
   const json = await res.json();
   const raw = json?.lighthouseResult?.categories?.performance?.score;
+
   if (raw === undefined || raw === null) {
-    return { score: null, error: 'NO_SCORE_IN_RESPONSE' };
+    return {
+      score: null,
+      error: 'NO_SCORE_IN_RESPONSE',
+      retryable: false,
+      retryAfterMs: null,
+    };
   }
-  return { score: Math.round(raw * 100), error: null };
+
+  return {
+    score: Math.round(raw * 100),
+    error: null,
+    retryable: false,
+    retryAfterMs: null,
+  };
 }
 
-// ── Retry wrapper — your original exponential backoff, ported ─────
 async function fetchPSIWithRetry(url, strategy) {
   let delay = RETRY_DELAY_MS;
-  let last = { score: null, error: 'UNKNOWN' };
+  let last = { score: null, error: 'UNKNOWN', retryable: true, retryAfterMs: null };
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      last = await fetchPSI(url, strategy);
-    } catch (e) {
-      last = { score: null, error: `FETCH_FAILED: ${e.message}` };
-    }
+    last = await fetchPSI(url, strategy);
 
     if (last.score !== null) {
-      if (attempt > 1) console.log(`  ✓ ${url} [${strategy}] succeeded on attempt ${attempt}`);
+      if (attempt > 1) {
+        console.log(`  ✓ ${url} [${strategy}] succeeded on attempt ${attempt}`);
+      }
       return last;
     }
 
-    if (attempt < MAX_RETRIES) {
-      console.log(`  ↻ ${url} [${strategy}] attempt ${attempt} failed (${last.error}). Retrying in ${delay}ms`);
-      await sleep(delay);
-      delay *= 2;
-    }
+    if (!last.retryable || attempt === MAX_RETRIES) break;
+
+    const waitMs = Math.max(delay, last.retryAfterMs || 0);
+    console.log(
+      `  ↻ ${url} [${strategy}] attempt ${attempt} failed (${last.error}). ` +
+      `Retrying in ${waitMs}ms`
+    );
+    await sleep(waitMs);
+    delay *= 2;
   }
 
-  console.log(`  ✗ ${url} [${strategy}] failed after ${MAX_RETRIES} attempts: ${last.error}`);
+  console.log(`  ✗ ${url} [${strategy}] failed: ${last.error}`);
   return last;
 }
 
-// ── Scan one site (mobile + desktop) ──────────────────────────────
 async function checkSite(site, scanId) {
   console.log(`Checking ${site.url}`);
   let hadError = false;
 
   for (const strategy of ['mobile', 'desktop']) {
     const { score, error } = await fetchPSIWithRetry(site.url, strategy);
-    db.insertCheck({ siteId: site.id, scanId, strategy, score, errorMessage: error });
+    db.insertCheck({
+      siteId: site.id,
+      scanId,
+      strategy,
+      score,
+      errorMessage: error,
+    });
+
     if (score === null) hadError = true;
-    await sleep(1500); // gentle pacing to stay under PSI's rate limit
+
+    // Gentle pacing to stay comfortably below PSI request-rate limits.
+    await sleep(1500);
   }
+
   return hadError;
 }
 
-// ── Full scan with a simple concurrency pool ──────────────────────
 async function runScan() {
   const sites = db.getActiveSites();
   if (sites.length === 0) {
@@ -82,34 +138,49 @@ async function runScan() {
   }
 
   const scanId = db.createScan();
+  const startedAt = Date.now();
   console.log(`Scan #${scanId} started — ${sites.length} sites, concurrency ${CONCURRENCY}`);
-  const t0 = Date.now();
 
   let errorCount = 0;
+  let sitesChecked = 0;
   const queue = [...sites];
 
   async function worker() {
     while (queue.length > 0) {
       const site = queue.shift();
-      const hadError = await checkSite(site, scanId);
-      if (hadError) errorCount++;
+      if (!site) continue;
+
+      try {
+        const hadError = await checkSite(site, scanId);
+        if (hadError) errorCount++;
+      } catch (error) {
+        errorCount++;
+        console.error(`  ✗ ${site.url} scan failed unexpectedly:`, error);
+      } finally {
+        sitesChecked++;
+      }
     }
   }
 
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  try {
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+  } finally {
+    db.finishScan(scanId, sitesChecked, errorCount);
+  }
 
-  db.finishScan(scanId, sites.length, errorCount);
   console.log(
-    `Scan #${scanId} finished in ${Math.round((Date.now() - t0) / 1000)}s — ` +
-    `${sites.length} sites, ${errorCount} with errors`
+    `Scan #${scanId} finished in ${Math.round((Date.now() - startedAt) / 1000)}s — ` +
+    `${sitesChecked} sites, ${errorCount} with errors`
   );
 }
 
-// Run directly (npm run scan) vs. required by the scheduler
 if (require.main === module) {
   runScan()
     .then(() => process.exit(0))
-    .catch((e) => { console.error('Scan failed:', e); process.exit(1); });
+    .catch((error) => {
+      console.error('Scan failed:', error);
+      process.exit(1);
+    });
 }
 
 module.exports = { runScan };

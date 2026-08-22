@@ -7,6 +7,17 @@ const { startScheduler } = require('./scheduler');
 
 const app = express();
 
+app.disable('x-powered-by');
+
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'X-Frame-Options': 'SAMEORIGIN',
+  });
+  next();
+});
+
 // API + health routes
 app.use(routes);
 
@@ -19,6 +30,6 @@ if (db.seedSitesIfEmpty()) {
 }
 
 app.listen(config.port, () => {
-  console.log(`PSI Monitor listening on http://localhost:${config.port}`);
+  console.log(`Performance Monitor listening on http://localhost:${config.port}`);
   startScheduler();
 });

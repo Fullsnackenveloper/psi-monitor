@@ -1,17 +1,22 @@
 const path = require('node:path');
 
-// Load .env if present (local dev). In Docker, env vars come from the
-// environment directly, so a missing .env file is fine.
+// Load .env if present (local dev). In Docker, environment variables are
+// injected directly, so a missing .env file is expected.
 try {
   process.loadEnvFile();
 } catch {
-  /* no .env file — use real environment variables */
+  /* no local .env file */
+}
+
+function boundedNumber(value, fallback, min, max) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
 }
 
 module.exports = {
   apiKey: process.env.PSI_API_KEY || '',
-  port: Number(process.env.PORT) || 3000,
-  threshold: Number(process.env.SCORE_THRESHOLD) || 70,
+  port: boundedNumber(process.env.PORT, 3000, 1, 65535),
+  threshold: boundedNumber(process.env.SCORE_THRESHOLD, 70, 0, 100),
   scanCron: process.env.SCAN_CRON || '0 */6 * * *',
-  dbPath: process.env.DB_PATH || './data/psi.db',
+  dbPath: path.resolve(process.env.DB_PATH || './data/psi.db'),
 };

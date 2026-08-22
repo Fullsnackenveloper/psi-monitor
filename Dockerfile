@@ -2,7 +2,7 @@
 FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci
 COPY public ./public
 COPY src/tailwind.css ./src/tailwind.css
 RUN npm run build:css
@@ -11,7 +11,7 @@ RUN npm run build:css
 FROM node:24-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # ── Runtime ───────────────────────────────────────────────────────
 FROM node:24-slim

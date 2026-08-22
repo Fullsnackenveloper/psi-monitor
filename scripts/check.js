@@ -1,9 +1,7 @@
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
 
-const files = [
+const serverFiles = [
   'src/server.js',
   'src/routes.js',
   'src/db.js',
@@ -12,30 +10,50 @@ const files = [
   'src/config.js',
 ];
 
-for (const file of files) {
+for (const file of serverFiles) {
   const result = spawnSync(process.execPath, ['--check', file], { stdio: 'inherit' });
   if (result.status !== 0) process.exit(result.status || 1);
 }
 
-const html = fs.readFileSync('public/index.html', 'utf8');
-const scripts = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)]
-  .filter((m) => !/type=["']application\/ld\+json["']/i.test(m[1]))
-  .map((m) => m[2]);
-
-if (!scripts.length) {
-  console.error('No dashboard JavaScript found in public/index.html');
+const clientFile = 'public/app.js';
+if (!fs.existsSync(clientFile)) {
+  console.error(`Missing dashboard client: ${clientFile}`);
   process.exit(1);
 }
 
-const tempFile = path.join(os.tmpdir(), `psi-monitor-client-${process.pid}.js`);
-fs.writeFileSync(tempFile, scripts.join('\n'));
-const clientResult = spawnSync(process.execPath, ['--check', tempFile], { stdio: 'inherit' });
-fs.rmSync(tempFile, { force: true });
+const clientResult = spawnSync(process.execPath, ['--check', clientFile], { stdio: 'inherit' });
 if (clientResult.status !== 0) process.exit(clientResult.status || 1);
+
+const html = fs.readFileSync('public/index.html', 'utf8');
 
 if (!html.includes('href="/styles.css"')) {
   console.error('Dashboard does not reference the compiled Tailwind stylesheet.');
   process.exit(1);
+}
+
+if (!html.includes('src="/app.js"')) {
+  console.error('Dashboard does not reference public/app.js.');
+  process.exit(1);
+}
+
+const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/i);
+if (!jsonLdMatch) {
+  console.error('Dashboard is missing JSON-LD.');
+  process.exit(1);
+}
+
+try {
+  JSON.parse(jsonLdMatch[1]);
+} catch (error) {
+  console.error(`Dashboard JSON-LD is invalid: ${error.message}`);
+  process.exit(1);
+}
+
+for (const id of ['runtime-state', 'snapshot-meta', 'sites-title', 'site-list-meta', 'table-body', 'app-version']) {
+  if (!html.includes(`id="${id}"`)) {
+    console.error(`Dashboard is missing required element #${id}.`);
+    process.exit(1);
+  }
 }
 
 if (!fs.existsSync('src/tailwind.css')) {
@@ -49,4 +67,6 @@ if (builtCss < 500) {
   process.exit(1);
 }
 
-console.log(`Checks passed (${files.length} server files + dashboard client + Tailwind build).`);
+console.log(
+  `Checks passed (${serverFiles.length} server files + dashboard client + markup/JSON-LD + Tailwind build).`
+);

@@ -1,7 +1,7 @@
 {
   "name": "psi-monitor",
   "version": "1.0.0",
-  "description": "Self-hosted PageSpeed Insights monitor. Scheduled scans, score history, and an alerting dashboard. Node + Express + SQLite, deployed via Docker and GitHub Actions.",
+  "description": "Self-hosted Performance Monitor for automated Google PageSpeed Insights checks, score history, threshold alerts, and per-site trends.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

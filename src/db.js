@@ -3,7 +3,7 @@ const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const config = require('./config');
 
-// Make sure the data directory exists before SQLite opens the file
+// Make sure the data directory exists before SQLite opens the file.
 fs.mkdirSync(path.dirname(config.dbPath), { recursive: true });
 
 const db = new DatabaseSync(config.dbPath);
@@ -81,30 +81,64 @@ function getActiveSites() {
   return db.prepare('SELECT * FROM sites WHERE active = 1 ORDER BY id').all();
 }
 
-// Latest mobile + desktop check per site — the dashboard's main table
-function getCurrentData() {
+function getLatestCompletedScan() {
+  return db.prepare(`
+    SELECT
+      id,
+      started_at AS startedAt,
+      finished_at AS finishedAt,
+      sites_checked AS sitesChecked,
+      error_count AS errorCount
+    FROM scans
+    WHERE finished_at IS NOT NULL
+    ORDER BY id DESC
+    LIMIT 1
+  `).get() || null;
+}
+
+// A dashboard snapshot is intentionally based on one completed scan.
+// This prevents a scheduled scan in progress from mixing fresh mobile
+// results with older desktop results in the same visible row.
+function getCurrentData(scanId = null) {
+  if (scanId === null || scanId === undefined) {
+    return db.prepare(`
+      SELECT
+        s.id, s.url, s.label,
+        NULL AS mobile, NULL AS mobileError, NULL AS mobileCheckedAt,
+        NULL AS desktop, NULL AS desktopError, NULL AS desktopCheckedAt
+      FROM sites s
+      WHERE s.active = 1
+      ORDER BY s.id
+    `).all();
+  }
+
   return db.prepare(`
     SELECT
       s.id, s.url, s.label,
-      cm.score AS mobile,  cm.error_message AS mobileError,  cm.checked_at AS mobileCheckedAt,
-      cd.score AS desktop, cd.error_message AS desktopError, cd.checked_at AS desktopCheckedAt
+      cm.score AS mobile,
+      cm.error_message AS mobileError,
+      cm.checked_at AS mobileCheckedAt,
+      cd.score AS desktop,
+      cd.error_message AS desktopError,
+      cd.checked_at AS desktopCheckedAt
     FROM sites s
     LEFT JOIN checks cm ON cm.id = (
       SELECT id FROM checks
-      WHERE site_id = s.id AND strategy = 'mobile'
-      ORDER BY checked_at DESC, id DESC LIMIT 1
+      WHERE site_id = s.id AND scan_id = ? AND strategy = 'mobile'
+      ORDER BY id DESC LIMIT 1
     )
     LEFT JOIN checks cd ON cd.id = (
       SELECT id FROM checks
-      WHERE site_id = s.id AND strategy = 'desktop'
-      ORDER BY checked_at DESC, id DESC LIMIT 1
+      WHERE site_id = s.id AND scan_id = ? AND strategy = 'desktop'
+      ORDER BY id DESC LIMIT 1
     )
     WHERE s.active = 1
     ORDER BY s.id
-  `).all();
+  `).all(scanId, scanId);
 }
 
-// Per-scan averages — the trend chart
+// Per-scan averages are kept as a small API capability even though the
+// primary UI now focuses on per-site history.
 function getHistoryData() {
   return db.prepare(`
     SELECT
@@ -120,15 +154,38 @@ function getHistoryData() {
   `).all();
 }
 
-// Full score history for one site — new capability the Sheet couldn't do
-function getSiteHistory(siteId) {
+// The dashboard only needs enough recent rows to render 30 scan cycles.
+// Full history remains append-only in SQLite.
+function getSiteHistory(siteId, limit = 80) {
+  const safeLimit = Math.max(10, Math.min(Number(limit) || 80, 200));
+
   return db.prepare(`
-    SELECT scan_id AS scanId, strategy, score, error_message AS errorMessage, checked_at AS checkedAt
-    FROM checks WHERE site_id = ? ORDER BY checked_at, id
-  `).all(siteId);
+    SELECT scanId, strategy, score, errorMessage, checkedAt
+    FROM (
+      SELECT
+        id,
+        scan_id AS scanId,
+        strategy,
+        score,
+        error_message AS errorMessage,
+        checked_at AS checkedAt
+      FROM checks
+      WHERE site_id = ?
+      ORDER BY checked_at DESC, id DESC
+      LIMIT ?
+    )
+    ORDER BY checkedAt, id
+  `).all(siteId, safeLimit);
 }
 
 module.exports = {
-  seedSitesIfEmpty, createScan, finishScan, insertCheck,
-  getActiveSites, getCurrentData, getHistoryData, getSiteHistory,
+  seedSitesIfEmpty,
+  createScan,
+  finishScan,
+  insertCheck,
+  getActiveSites,
+  getLatestCompletedScan,
+  getCurrentData,
+  getHistoryData,
+  getSiteHistory,
 };

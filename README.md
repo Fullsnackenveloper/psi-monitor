@@ -1,6 +1,6 @@
-# PSI Monitor
+# Performance Monitor
 
-A self-hosted uptime-style monitor for web performance. It scans a list of sites against the Google PageSpeed Insights API on a schedule, stores every measurement, and serves a live dashboard with current scores, alert states, filtering, and on-demand per-site history.
+A self-hosted web performance monitor that runs automated Google PageSpeed Insights checks on a schedule, stores every measurement, and serves a live dashboard with coherent scan snapshots, threshold states, filtering, and on-demand per-site history.
 
 Live demo: **https://psi.msschermer.us**
 
@@ -20,8 +20,8 @@ I rebuilt it from scratch as a standalone service so it could run on any server,
 
 - Scans each configured site for both **mobile** and **desktop** performance scores.
 - Stores **every** measurement, so history is real data rather than a running average.
-- Serves a responsive Tailwind CSS dashboard with a sortable, filterable site list and compact summary metrics.
-- Opens an on-demand per-site history panel directly beneath the selected row, including current scores, change from the prior measurement, and a per-site trend chart.
+- Serves a responsive Tailwind CSS dashboard with a sortable, filterable site list, compact coverage-aware summary metrics, and mobile-first site cards.
+- Opens an on-demand per-site history panel directly beneath the selected row, including current strategy state, change from the prior successful measurement, failure context, and a per-site trend chart.
 - Flags any site scoring below a configurable threshold as an **alert**, and surfaces the reason when a scan fails.
 - Runs scans automatically on a cron schedule, unattended.
 - Reports its own health at `/healthz` for the container runtime and reverse proxy.
@@ -59,7 +59,7 @@ That split keeps "build the thing" separate from "run the things," which is why 
 
 **node-cron** replaces the platform's time-based triggers, with a guard so scans can't overlap.
 
-**Tailwind CSS 4.3.3** powers the dashboard UI. The source stylesheet lives in `src/tailwind.css`, while the production stylesheet is compiled into `public/styles.css`. The interface keeps the portfolio's blueprint visual system but uses Tailwind tokens and component layers for responsive states, filters, badges, score rows, and inline history panels.
+**Tailwind CSS 4.3.3** powers the dashboard UI. The source stylesheet lives in `src/tailwind.css`; `public/styles.css` is generated and should not be edited directly. The interface keeps the portfolio's blueprint page system while the application itself uses a neutral production-app palette, semantic status colors, responsive site rows, and inline history panels.
 
 **Caddy** (in the infra repo) terminates TLS and reverse-proxies to the container, fetching and renewing Let's Encrypt certificates automatically.
 
@@ -73,7 +73,7 @@ Three tables, and the important decision is that measurements are **append-only*
 - `scans` — one row per scan cycle, with timing and error counts.
 - `checks` — one row per individual measurement (a given site + strategy at a point in time). Never overwritten.
 
-The original stored one row per site and overwrote it each scan, plus a separate tab of averages, which threw away the underlying data. Here, every check is preserved. The dashboard's "current" view is just *each site's latest check* (a query), the trend chart's averages are *computed from the stored checks* (a query), and per-site history over time is available because the data was never discarded.
+The original stored one row per site and overwrote it each scan, plus a separate tab of averages, which threw away the underlying data. Here, every check is preserved. The dashboard's current view is based on the **latest completed scan**, so a scan in progress can never mix new mobile results with older desktop results. Per-site history remains available because the underlying checks are append-only.
 
 The alert **threshold is not stored in the database.** It lives in configuration and is applied at read time. Storing an `ALERT`/`OK` label would freeze one day's threshold into historical rows; keeping only the raw facts (score, or the error) means changing the threshold reinterprets all history correctly and never requires a data migration.
 
@@ -86,10 +86,12 @@ This was a rebuild, not a copy, and the QA process at each phase surfaced things
 - **Append-only history** instead of overwrite-in-place, so trends and per-site history are real.
 - **Errors are stored, not just logged.** A failed check records *why* it failed, and the dashboard shows the reason on hover.
 - **A distinct `PENDING` state** for never-scanned sites, so a fresh deploy doesn't misreport unscanned sites as errors.
+- **Completed-scan snapshots** keep the dashboard internally consistent while a scheduled scan is still running.
+- **Freshness is explicit.** The UI reports the latest completed scan and flags stale data instead of presenting an old score as current.
 - **Threshold moved to config**, applied at read time — no hardcoded values, no threshold baked into stored data.
 - **Secrets externalized** to environment variables; nothing sensitive is committed or baked into the image.
 - **A `/healthz` endpoint**, wired into the container's `HEALTHCHECK` so the runtime reports the app as healthy or not.
-- **Rate-limit-aware pacing.** Scans run serially with spacing between calls to stay under the API's per-minute limits, with exponential-backoff retries on transient failures.
+- **Rate-limit-aware pacing.** Scans run serially with spacing between calls, 30-second request timeouts, and exponential-backoff retries only for transient failures such as rate limits, network failures, and server-side API errors.
 - **The batching workaround is gone.** The original processed a few URLs per run to dodge Apps Script's 6-minute execution cap; a real server has no such limit, so a single scan handles the whole list.
 - **Dependency-light and container-native**, with a multi-stage Docker build and a non-root runtime user.
 
@@ -158,10 +160,11 @@ src/
   scanner.js      # PageSpeed fetch, retry/backoff, scan loop
   scheduler.js    # node-cron wiring with an overlap guard
   routes.js       # /api/data, /api/history, /api/sites/:id/history, /healthz
-  server.js       # Express entry point
+  server.js       # Express entry point + response security headers
   tailwind.css    # Tailwind theme, component layer, responsive table/card behavior
 public/
-  index.html      # dashboard markup + client JavaScript
+  index.html      # semantic dashboard markup + metadata/schema
+  app.js          # dashboard state, filtering, history panels, and chart rendering
   styles.css      # generated Tailwind build output
 config/
   sites.seed.json # sites loaded on first run
