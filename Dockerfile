@@ -1,10 +1,19 @@
-# ── Build stage: install dependencies ─────────────────────────────
+# ── Build dashboard CSS with Tailwind ─────────────────────────────
+FROM node:24-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm install
+COPY public ./public
+COPY src/tailwind.css ./src/tailwind.css
+RUN npm run build:css
+
+# ── Install production dependencies only ─────────────────────────
 FROM node:24-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
-# ── Runtime stage ─────────────────────────────────────────────────
+# ── Runtime ───────────────────────────────────────────────────────
 FROM node:24-slim
 WORKDIR /app
 ENV NODE_ENV=production
@@ -12,10 +21,9 @@ ENV NODE_ENV=production
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY src ./src
-COPY public ./public
+COPY --from=build /app/public ./public
 COPY config ./config
 
-# Run as the non-root user the base image provides
 RUN mkdir -p /app/data && chown -R node:node /app
 USER node
 

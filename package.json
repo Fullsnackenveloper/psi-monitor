@@ -5,8 +5,11 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node scripts/check.js",
+    "dev": "concurrently -k -n css,server -c auto \"npm:dev:css\" \"npm:dev:server\"",
+    "dev:css": "tailwindcss -i ./src/tailwind.css -o ./public/styles.css --watch",
+    "dev:server": "node --watch src/server.js",
+    "build:css": "tailwindcss -i ./src/tailwind.css -o ./public/styles.css --minify",
+    "test": "npm run build:css && node scripts/check.js",
     "scan": "node src/scanner.js"
   },
   "repository": {
@@ -24,5 +27,10 @@
   "dependencies": {
     "express": "^5.2.1",
     "node-cron": "^4.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.3",
+    "concurrently": "10.0.5",
+    "tailwindcss": "4.3.3"
   }
 }

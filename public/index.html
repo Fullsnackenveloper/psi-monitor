@@ -73,7 +73,7 @@
       "@id": "https://psi.msschermer.us/#source",
       "name": "PageSpeed Monitor source",
       "codeRepository": "https://github.com/msschermer/psi-monitor",
-      "programmingLanguage": ["JavaScript", "SQL"],
+      "programmingLanguage": ["JavaScript", "SQL", "CSS"],
       "runtimePlatform": "Node.js",
       "author": { "@id": "https://msschermer.us/#person" },
       "targetProduct": { "@id": "https://psi.msschermer.us/#application" }
@@ -82,96 +82,116 @@
 }
 </script>
 </head>
-<body>
-<a class="skip" href="#sites-title">Skip to monitored sites</a>
-<div class="wrap">
 
-  <header class="masthead">
+<body class="blueprint min-h-screen bg-paper font-sans text-ink antialiased">
+<a class="skip-link" href="#sites-title">Skip to monitored sites</a>
+
+<div class="mx-auto w-full max-w-[1080px] px-[clamp(1.25rem,5vw,4rem)] pb-16">
+  <header class="flex flex-wrap items-end justify-between gap-4 border-b border-ink py-7">
     <div>
-      <div class="page-title">PageSpeed Monitor</div>
-      <div class="page-sub">Scheduled performance checks with score history and alerting</div>
+      <h1 class="font-mono text-[clamp(15px,2vw,17px)] font-semibold tracking-[0.04em]">Performance Monitor</h1>
+      <p class="mt-0.5 text-[13px] text-ink-soft">Scheduled performance checks with score history and alerting</p>
     </div>
-    <nav class="masthead-links" aria-label="Project links">
-      <a href="https://github.com/msschermer/psi-monitor" target="_blank" rel="noopener">Source</a>
-      <a href="https://msschermer.us">Portfolio</a>
+    <nav class="flex gap-5 font-mono text-xs tracking-[0.04em] text-ink-soft" aria-label="Project links">
+      <a class="border-b border-rule pb-0.5 transition hover:border-brand hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand" href="https://github.com/msschermer/psi-monitor" target="_blank" rel="noopener">Source</a>
+      <a class="border-b border-rule pb-0.5 transition hover:border-brand hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand" href="https://msschermer.us">Portfolio</a>
     </nav>
   </header>
 
-  <main class="tool-shell" aria-label="PageSpeed monitoring dashboard">
-    <div class="tool-chrome">
-      <div class="tool-chrome-left">
-        <span class="label">Monitor</span>
-        <span class="runtime-state" id="runtime-state">Loading</span>
-      </div>
-      <span class="tool-meta" id="monitor-meta">scheduled scans · stored score history · threshold —</span>
-    </div>
-
-    <section class="stats" aria-label="Current performance summary">
-      <div class="stat">
-        <div class="stat-label">Sites</div>
-        <div class="stat-val" id="stat-total">—</div>
-        <div class="stat-note" id="stat-total-note">active targets</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Alerts</div>
-        <div class="stat-val danger" id="stat-alerts">—</div>
-        <div class="stat-note" id="stat-alert-note">below threshold</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Avg mobile</div>
-        <div class="stat-val" id="stat-mobile">—</div>
-        <div class="stat-note" id="stat-mobile-note">current checks</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Avg desktop</div>
-        <div class="stat-val" id="stat-desktop">—</div>
-        <div class="stat-note" id="stat-desktop-note">current checks</div>
+  <main class="mt-6 overflow-hidden rounded-lg border border-app-border-strong border-t-4 border-t-app-text bg-app-surface shadow-[0_18px_44px_rgba(28,32,36,0.09),0_2px_5px_rgba(28,32,36,0.06)]" aria-label="PageSpeed monitoring dashboard">
+    <section class="border-b border-app-border bg-app-subtle px-4 py-3 sm:px-5" aria-label="Performance snapshot">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <span class="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-app-text-soft">Performance snapshot</span>
+        <span class="inline-flex items-center gap-2 text-[11px] font-medium text-app-text-soft">
+          <span id="snapshot-dot" class="h-2 w-2 rounded-full bg-pending-dot" aria-hidden="true"></span>
+          <span id="runtime-state">Loading latest measurements</span>
+        </span>
       </div>
     </section>
 
-    <section class="tool-section" aria-labelledby="sites-title">
-      <div class="section-head">
-        <h2 class="label" id="sites-title">Monitored sites</h2>
-        <span class="meta" id="last-refreshed">Loading</span>
+    <section class="grid grid-cols-3 border-b border-app-border bg-app-bg" aria-label="Current performance summary">
+      <div class="metric-summary">
+        <span class="metric-label">Sites</span>
+        <span class="metric-value" id="stat-total">—</span>
+        <span class="metric-note" id="stat-total-note">monitored</span>
       </div>
+      <div class="metric-summary">
+        <span class="metric-label">Avg mobile</span>
+        <span class="metric-value" id="stat-mobile">—</span>
+        <span class="metric-note" id="stat-mobile-note">target ≥ —</span>
+      </div>
+      <div class="metric-summary">
+        <span class="metric-label">Avg desktop</span>
+        <span class="metric-value" id="stat-desktop">—</span>
+        <span class="metric-note" id="stat-desktop-note">target ≥ —</span>
+      </div>
+    </section>
 
-      <div class="toolbar">
-        <div class="filters">
-          <input type="search" id="search" placeholder="Filter by site" oninput="applyFilters()" aria-label="Filter sites">
-          <select id="status-filter" onchange="applyFilters()" aria-label="Filter by status">
-            <option value="all">All statuses</option>
-            <option value="alert">Alerts only</option>
-            <option value="ok">OK only</option>
-            <option value="error">Errors only</option>
-            <option value="pending">Pending only</option>
-          </select>
-          <button class="btn subtle" id="clear-btn" onclick="clearFilters()" hidden>Clear</button>
+    <section class="bg-app-surface pt-4" aria-labelledby="sites-title">
+      <div class="mx-3 mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-app-border pb-2.5 sm:mx-4">
+        <div>
+          <h2 class="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-app-text-soft" id="sites-title">Monitored sites</h2>
+          <p class="mt-1 text-[11px] text-app-text-faint">Current scores first. Select a site for its measurement history.</p>
         </div>
-        <button class="btn" id="refresh-btn" onclick="loadAll()" title="Reload stored monitoring data"><span id="spin-icon">&#8635;</span> Reload data</button>
+        <span class="font-mono text-[10px] text-app-text-faint" id="last-refreshed">Loading</span>
       </div>
 
-      <div class="table-wrap" id="table-wrap" tabindex="0" role="region" aria-label="Monitored sites table">
-        <table id="sites-table">
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="url" tabindex="0" aria-sort="none" onclick="sortBy('url')" onkeydown="sortKeydown(event, 'url')">Site <span class="sort-arrow" id="arr-url"></span></th>
-              <th class="sortable" data-sort="mobile" tabindex="0" aria-sort="ascending" onclick="sortBy('mobile')" onkeydown="sortKeydown(event, 'mobile')">Mobile <span class="sort-arrow active" id="arr-mobile">▲</span></th>
-              <th class="sortable" data-sort="desktop" tabindex="0" aria-sort="none" onclick="sortBy('desktop')" onkeydown="sortKeydown(event, 'desktop')">Desktop <span class="sort-arrow" id="arr-desktop"></span></th>
-              <th class="sortable" data-sort="status" tabindex="0" aria-sort="none" onclick="sortBy('status')" onkeydown="sortKeydown(event, 'status')">Status <span class="sort-arrow" id="arr-status"></span></th>
-              <th>Last checked</th>
+      <div class="mx-3 mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-app-border bg-app-surface p-2 shadow-[0_1px_2px_rgba(28,32,36,0.04)] sm:mx-4">
+        <div class="relative min-w-[220px] flex-1">
+          <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-app-text-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.4-3.4"></path>
+          </svg>
+          <input class="h-10 w-full rounded-md border border-app-border bg-app-surface pl-9 pr-3 text-sm text-app-text outline-none transition placeholder:text-app-text-faint hover:border-app-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10" type="search" id="search" placeholder="Filter by site" oninput="applyFilters()" aria-label="Filter sites">
+        </div>
+
+        <select class="h-10 min-w-[150px] rounded-md border border-app-border bg-app-surface px-3 pr-9 text-sm text-app-text outline-none transition hover:border-app-border-strong focus:border-accent focus:ring-2 focus:ring-accent/10" id="status-filter" onchange="applyFilters()" aria-label="Filter by status">
+          <option value="all">All statuses</option>
+          <option value="alert">Alerts only</option>
+          <option value="ok">OK only</option>
+          <option value="error">Errors only</option>
+          <option value="pending">Pending only</option>
+        </select>
+
+        <button class="hidden h-10 items-center justify-center rounded-md border border-app-border bg-app-surface px-3 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-app-text-soft transition hover:border-accent hover:bg-accent-soft hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" id="clear-btn" onclick="clearFilters()">Clear</button>
+
+        <button class="ml-auto inline-flex h-10 items-center justify-center gap-2 rounded-md border border-app-text bg-app-text px-3.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-white transition hover:border-accent hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50" id="refresh-btn" onclick="loadAll()" title="Reload stored monitoring data">
+          <span id="spin-icon" aria-hidden="true">&#8635;</span>
+          Reload data
+        </button>
+      </div>
+
+      <div class="table-shell" id="table-wrap" tabindex="0" role="region" aria-label="Monitored sites table">
+        <table class="w-full min-w-[650px] table-fixed border-collapse text-[12.5px]" id="sites-table">
+          <thead class="bg-app-subtle">
+            <tr class="border-b border-app-border">
+              <th class="sortable w-[39%]" data-sort="url" tabindex="0" aria-sort="none" onclick="sortBy('url')" onkeydown="sortKeydown(event, 'url')">Site <span class="sort-arrow ml-1 text-[8px] text-app-text-faint" id="arr-url"></span></th>
+              <th class="sortable w-[13%]" data-sort="mobile" tabindex="0" aria-sort="ascending" onclick="sortBy('mobile')" onkeydown="sortKeydown(event, 'mobile')">Mobile <span class="sort-arrow ml-1 text-[8px] text-accent" id="arr-mobile">▲</span></th>
+              <th class="sortable w-[13%]" data-sort="desktop" tabindex="0" aria-sort="none" onclick="sortBy('desktop')" onkeydown="sortKeydown(event, 'desktop')">Desktop <span class="sort-arrow ml-1 text-[8px] text-app-text-faint" id="arr-desktop"></span></th>
+              <th class="sortable w-[15%]" data-sort="status" tabindex="0" aria-sort="none" onclick="sortBy('status')" onkeydown="sortKeydown(event, 'status')">Status <span class="sort-arrow ml-1 text-[8px] text-app-text-faint" id="arr-status"></span></th>
+              <th class="w-[20%]">Last checked</th>
             </tr>
           </thead>
           <tbody id="table-body">
-            <tr><td colspan="5" class="empty">Loading</td></tr>
+            <tr><td colspan="5" class="py-14 text-center text-sm text-app-text-faint">Loading</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="load-more-wrap" id="load-more-wrap" hidden>
-        <button class="btn subtle" id="load-more-btn" type="button" onclick="loadMoreSites()">Load more</button>
+
+      <div class="mx-3 mt-2 hidden pb-3 sm:mx-4" id="load-more-wrap" hidden>
+        <button class="inline-flex h-10 w-full items-center justify-center rounded-md border border-app-border bg-app-surface px-4 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-app-text-soft transition hover:border-accent hover:bg-accent-soft hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" id="load-more-btn" type="button" onclick="loadMoreSites()">Load more</button>
       </div>
     </section>
-  </main>
-
+  
+    <footer class="tool-footer" aria-label="Project links">
+      <a class="tool-footer-bug" href="mailto:mikeschermer310@gmail.com?subject=Performance%20Monitor%20Bug%20Report">Report bug</a>
+      <nav class="tool-footer-meta" aria-label="Project metadata">
+        <span id="app-version">v—</span>
+        <span class="tool-footer-separator" aria-hidden="true">·</span>
+        <a href="https://github.com/msschermer/psi-monitor" target="_blank" rel="noopener">Source ↗</a>
+      </nav>
+    </footer>
+</main>
 </div>
 
 <script>
@@ -213,19 +233,12 @@ function relativeTime(v) {
   return days + ' day' + (days === 1 ? '' : 's') + ' ago';
 }
 
-function cronLabel(cron) {
-  const match = /^0 \*\/(\d+) \* \* \*$/.exec(cron || '');
-  if (match) return 'every ' + match[1] + ' hours';
-  if (cron === '0 * * * *') return 'hourly';
-  if (cron === '0 0 * * *') return 'daily';
-  return cron ? 'cron ' + cron : 'scheduled';
-}
 
 function scoreClass(s) {
-  if (typeof s !== 'number') return '';
-  if (s >= THRESHOLD) return 'good';
-  if (s >= THRESHOLD - 20) return 'warn';
-  return 'bad';
+  if (typeof s !== 'number') return 'text-app-text-faint';
+  if (s >= THRESHOLD) return 'text-good';
+  if (s >= THRESHOLD - 20) return 'text-warn';
+  return 'text-bad';
 }
 
 function statusRank(r) {
@@ -236,12 +249,17 @@ function statusRank(r) {
 }
 
 function badge(r) {
-  if (r.mobileStatus === 'PENDING' && r.desktopStatus === 'PENDING') return '<span class="badge pend">Pending</span>';
-  if (r.mobileStatus === 'ERROR' || r.desktopStatus === 'ERROR') {
-    return `<span class="badge err" title="${esc(r.mobileError || r.desktopError || 'Unknown error')}">Error</span>`;
+  const base = 'inline-flex items-center rounded-full border px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.12em]';
+  if (r.mobileStatus === 'PENDING' && r.desktopStatus === 'PENDING') {
+    return `<span class="${base} border-pending-border bg-pending-soft text-pending">Pending</span>`;
   }
-  if (r.mobileStatus === 'ALERT' || r.desktopStatus === 'ALERT') return '<span class="badge alert">Alert</span>';
-  return '<span class="badge ok">OK</span>';
+  if (r.mobileStatus === 'ERROR' || r.desktopStatus === 'ERROR') {
+    return `<span class="${base} border-warn-border bg-warn-soft text-warn" title="${esc(r.mobileError || r.desktopError || 'Unknown error')}">Error</span>`;
+  }
+  if (r.mobileStatus === 'ALERT' || r.desktopStatus === 'ALERT') {
+    return `<span class="${base} border-bad-border bg-bad-soft text-bad">Alert</span>`;
+  }
+  return `<span class="${base} border-good-border bg-good-soft text-good">OK</span>`;
 }
 
 function currentAverages() {
@@ -260,30 +278,36 @@ function updateSummary(scanCron) {
   const avg = currentAverages();
 
   document.getElementById('stat-total').textContent = ALL.length;
-  document.getElementById('stat-alerts').textContent = alerts;
   document.getElementById('stat-mobile').textContent = avg.mobile ?? '—';
   document.getElementById('stat-desktop').textContent = avg.desktop ?? '—';
-  document.getElementById('stat-alert-note').textContent = errors ? `${alerts} below threshold · ${errors} errors` : `below ${THRESHOLD} threshold`;
-  document.getElementById('stat-mobile-note').textContent = avg.mobile === null ? 'no successful checks' : avg.mobile >= THRESHOLD ? 'above threshold' : 'below threshold';
-  document.getElementById('stat-desktop-note').textContent = avg.desktop === null ? 'no successful checks' : avg.desktop >= THRESHOLD ? 'above threshold' : 'below threshold';
+  document.getElementById('stat-total-note').textContent = ALL.length === 1 ? 'monitored site' : 'monitored sites';
+  document.getElementById('stat-mobile-note').textContent = `target ≥ ${THRESHOLD}`;
+  document.getElementById('stat-desktop-note').textContent = `target ≥ ${THRESHOLD}`;
 
   const state = document.getElementById('runtime-state');
-  state.className = 'runtime-state';
-  if (errors) {
-    state.textContent = `${errors} error${errors === 1 ? '' : 's'}`;
-    state.classList.add('warn');
-  } else if (alerts) {
-    state.textContent = `${alerts} alert${alerts === 1 ? '' : 's'}`;
-    state.classList.add('alert');
-  } else if (pending) {
-    state.textContent = `${pending} pending`;
-    state.classList.add('warn');
-  } else {
-    state.textContent = 'Healthy';
-    state.classList.add('ok');
-  }
+  const dot = document.getElementById('snapshot-dot');
 
-  document.getElementById('monitor-meta').textContent = `${cronLabel(scanCron)} · stored score history · threshold ${THRESHOLD}`;
+  dot.className = 'h-2 w-2 rounded-full';
+  state.className = 'font-medium';
+
+  if (errors) {
+    const alertText = alerts ? ` · ${alerts} below target` : '';
+    state.textContent = `${errors} scan issue${errors === 1 ? '' : 's'}${alertText}`;
+    state.classList.add('text-warn');
+    dot.classList.add('bg-warn-dot');
+  } else if (alerts) {
+    state.textContent = `${alerts} site${alerts === 1 ? '' : 's'} below target`;
+    state.classList.add('text-bad');
+    dot.classList.add('bg-bad-dot');
+  } else if (pending) {
+    state.textContent = `${pending} site${pending === 1 ? '' : 's'} awaiting first scan`;
+    state.classList.add('text-pending');
+    dot.classList.add('bg-pending-dot');
+  } else {
+    state.textContent = 'All scanned sites within target';
+    state.classList.add('text-good');
+    dot.classList.add('bg-good-dot');
+  }
 }
 
 function sortBy(key) {
@@ -292,14 +316,16 @@ function sortBy(key) {
 
   document.querySelectorAll('.sort-arrow').forEach(el => {
     el.textContent = '';
-    el.classList.remove('active');
+    el.classList.remove('text-accent');
+    el.classList.add('text-app-text-faint');
   });
   document.querySelectorAll('th.sortable').forEach(el => el.setAttribute('aria-sort', 'none'));
 
   const arr = document.getElementById('arr-' + key);
   if (arr) {
     arr.textContent = sortDir === 1 ? '▲' : '▼';
-    arr.classList.add('active');
+    arr.classList.remove('text-app-text-faint');
+    arr.classList.add('text-accent');
   }
 
   const header = document.querySelector(`th.sortable[data-sort="${key}"]`);
@@ -347,10 +373,10 @@ function clearFilters() {
 }
 
 function deltaMarkup(current, previous) {
-  if (!Number.isFinite(current) || !Number.isFinite(previous)) return '<span class="delta-flat">—</span>';
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return '<span class="text-app-text-faint">—</span>';
   const d = current - previous;
-  if (d === 0) return '<span class="delta-flat">0</span>';
-  return `<span class="${d > 0 ? 'delta-up' : 'delta-down'}">${d > 0 ? '+' : ''}${d}</span>`;
+  if (d === 0) return '<span class="text-app-text-faint">0</span>';
+  return `<span class="${d > 0 ? 'text-good' : 'text-bad'}">${d > 0 ? '+' : ''}${d}</span>`;
 }
 
 function renderSiteChart(history) {
@@ -390,20 +416,20 @@ function renderSiteChart(history) {
 
   let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block" role="img" aria-label="Selected site score history">`;
   for (let v = Math.ceil(min / 10) * 10; v <= max; v += 10) {
-    svg += `<line x1="${PAD.left}" y1="${sy(v)}" x2="${W - PAD.right}" y2="${sy(v)}" stroke="#DFE5EC" stroke-width="1"/>`;
-    svg += `<text x="${PAD.left - 6}" y="${sy(v) + 3}" font-size="9" fill="#7B8A9A" text-anchor="end" font-family="IBM Plex Mono, monospace">${v}</text>`;
+    svg += `<line x1="${PAD.left}" y1="${sy(v)}" x2="${W - PAD.right}" y2="${sy(v)}" stroke="#E5E7EB" stroke-width="1"/>`;
+    svg += `<text x="${PAD.left - 6}" y="${sy(v) + 3}" font-size="9" fill="#8B8D98" text-anchor="end" font-family="IBM Plex Mono, monospace">${v}</text>`;
   }
-  svg += `<line x1="${PAD.left}" y1="${sy(THRESHOLD)}" x2="${W - PAD.right}" y2="${sy(THRESHOLD)}" stroke="#7B8A9A" stroke-width="1" stroke-dasharray="4,3"/>`;
-  svg += `<path d="${pathFor('desktop')}" fill="none" stroke="#1B7A4B" stroke-width="2" stroke-linejoin="round"/>`;
-  svg += `<path d="${pathFor('mobile')}" fill="none" stroke="#0B5E8A" stroke-width="2" stroke-linejoin="round"/>`;
+  svg += `<line x1="${PAD.left}" y1="${sy(THRESHOLD)}" x2="${W - PAD.right}" y2="${sy(THRESHOLD)}" stroke="#8B8D98" stroke-width="1" stroke-dasharray="4,3"/>`;
+  svg += `<path d="${pathFor('desktop')}" fill="none" stroke="#12B76A" stroke-width="2" stroke-linejoin="round"/>`;
+  svg += `<path d="${pathFor('mobile')}" fill="none" stroke="#2563EB" stroke-width="2" stroke-linejoin="round"/>`;
   scans.forEach((scan, i) => {
-    if (Number.isFinite(scan.desktop)) svg += `<circle cx="${sx(i)}" cy="${sy(scan.desktop)}" r="2.6" fill="#1B7A4B"><title>${esc(fmtDate(scan.checkedAt))} · desktop ${scan.desktop}</title></circle>`;
-    if (Number.isFinite(scan.mobile)) svg += `<circle cx="${sx(i)}" cy="${sy(scan.mobile)}" r="2.6" fill="#0B5E8A"><title>${esc(fmtDate(scan.checkedAt))} · mobile ${scan.mobile}</title></circle>`;
+    if (Number.isFinite(scan.desktop)) svg += `<circle cx="${sx(i)}" cy="${sy(scan.desktop)}" r="2.6" fill="#12B76A"><title>${esc(fmtDate(scan.checkedAt))} · desktop ${scan.desktop}</title></circle>`;
+    if (Number.isFinite(scan.mobile)) svg += `<circle cx="${sx(i)}" cy="${sy(scan.mobile)}" r="2.6" fill="#2563EB"><title>${esc(fmtDate(scan.checkedAt))} · mobile ${scan.mobile}</title></circle>`;
   });
   const firstDate = scans[0]?.checkedAt ? fmtDate(scans[0].checkedAt, false) : '';
   const lastDate = scans.at(-1)?.checkedAt ? fmtDate(scans.at(-1).checkedAt, false) : '';
-  svg += `<text x="${PAD.left}" y="${H - 3}" font-size="9" fill="#7B8A9A" font-family="IBM Plex Mono, monospace">${esc(firstDate)}</text>`;
-  svg += `<text x="${W - PAD.right}" y="${H - 3}" font-size="9" fill="#7B8A9A" text-anchor="end" font-family="IBM Plex Mono, monospace">${esc(lastDate)}</text>`;
+  svg += `<text x="${PAD.left}" y="${H - 3}" font-size="9" fill="#8B8D98" font-family="IBM Plex Mono, monospace">${esc(firstDate)}</text>`;
+  svg += `<text x="${W - PAD.right}" y="${H - 3}" font-size="9" fill="#8B8D98" text-anchor="end" font-family="IBM Plex Mono, monospace">${esc(lastDate)}</text>`;
   svg += '</svg>';
   return svg;
 }
@@ -417,18 +443,33 @@ function detailBodyMarkup(history) {
   const previousDesktop = desktop.at(-2)?.score;
 
   return `
-    <div class="detail-stats">
-      <div class="detail-stat"><div class="k">Mobile now</div><div class="v ${scoreClass(latestMobile)}">${latestMobile ?? '—'}</div></div>
-      <div class="detail-stat"><div class="k">Mobile change</div><div class="v">${deltaMarkup(latestMobile, previousMobile)}</div></div>
-      <div class="detail-stat"><div class="k">Desktop now</div><div class="v ${scoreClass(latestDesktop)}">${latestDesktop ?? '—'}</div></div>
-      <div class="detail-stat"><div class="k">Desktop change</div><div class="v">${deltaMarkup(latestDesktop, previousDesktop)}</div></div>
+    <div class="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-app-border bg-app-border md:grid-cols-4">
+      <div class="bg-app-surface p-3">
+        <div class="font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-app-text-faint">Mobile now</div>
+        <div class="mt-1 font-mono text-lg font-semibold ${scoreClass(latestMobile)}">${latestMobile ?? '—'}</div>
+      </div>
+      <div class="bg-app-surface p-3">
+        <div class="font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-app-text-faint">Mobile change</div>
+        <div class="mt-1 font-mono text-lg font-semibold">${deltaMarkup(latestMobile, previousMobile)}</div>
+      </div>
+      <div class="bg-app-surface p-3">
+        <div class="font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-app-text-faint">Desktop now</div>
+        <div class="mt-1 font-mono text-lg font-semibold ${scoreClass(latestDesktop)}">${latestDesktop ?? '—'}</div>
+      </div>
+      <div class="bg-app-surface p-3">
+        <div class="font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-app-text-faint">Desktop change</div>
+        <div class="mt-1 font-mono text-lg font-semibold">${deltaMarkup(latestDesktop, previousDesktop)}</div>
+      </div>
     </div>
-    <div class="chart-legend detail-legend" aria-label="Site history chart legend">
-      <div class="legend-item"><span class="legend-dot mobile-dot"></span> Mobile</div>
-      <div class="legend-item"><span class="legend-dot desktop-dot"></span> Desktop</div>
+
+    <div class="mt-4 flex flex-wrap items-center gap-4 font-mono text-[10px] text-app-text-faint" aria-label="Site history chart legend">
+      <span class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-accent"></span>Mobile</span>
+      <span class="inline-flex items-center gap-2"><span class="h-2 w-2 rounded-full bg-good"></span>Desktop</span>
+      <span class="inline-flex items-center gap-2"><span class="h-px w-4 border-t border-dashed border-app-text-faint"></span>Threshold</span>
     </div>
-    <div class="detail-chart">${renderSiteChart(history)}</div>
-    <div class="detail-note">Showing up to 30 recent successful measurements per strategy. Complete measurement history is retained in the monitoring database.</div>`;
+
+    <div class="mt-2 min-h-36 rounded-md border border-app-border bg-app-surface p-2 sm:p-3">${renderSiteChart(history)}</div>
+    <p class="mt-3 text-[11px] leading-5 text-app-text-faint">Showing up to 30 recent successful measurements per strategy. Complete measurement history is retained in the monitoring database.</p>`;
 }
 
 function detailRowMarkup(site) {
@@ -440,25 +481,30 @@ function detailRowMarkup(site) {
 
   return `
     <tr class="site-detail-row" id="detail-row-${site.id}">
-      <td colspan="5">
-        <div class="site-detail-expand">
-          <div class="site-detail-expand-inner">
-            <section class="site-detail-inline" aria-live="polite" aria-labelledby="detail-title-${site.id}">
-              <div class="detail-head">
-                <div>
-                  <div class="detail-title" id="detail-title-${site.id}">${esc(label)} history</div>
-                  <div class="detail-url">${esc(site.url)}</div>
-                </div>
-                <button class="btn subtle icon-only" type="button" onclick="closeDetail()" aria-label="Close ${esc(label)} history">×</button>
+      <td colspan="5" class="!p-0">
+        <div class="detail-reveal overflow-hidden border-b border-app-border border-t-2 border-t-accent bg-app-bg">
+          <section aria-live="polite" aria-labelledby="detail-title-${site.id}">
+            <div class="flex items-start justify-between gap-4 border-b border-app-border bg-app-subtle px-4 py-3">
+              <div class="min-w-0">
+                <div class="font-mono text-[11px] font-semibold tracking-[0.02em] text-app-text" id="detail-title-${site.id}">${esc(label)} history</div>
+                <div class="mt-0.5 truncate text-[11px] text-app-text-faint">${esc(site.url)}</div>
               </div>
-              <div class="detail-body" id="detail-body-${site.id}">
-                ${history ? detailBodyMarkup(history) : '<div class="detail-loading">Loading performance history…</div>'}
-              </div>
-            </section>
-          </div>
+              <button class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-app-border bg-app-surface font-mono text-base text-app-text-soft transition hover:border-accent hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" type="button" onclick="event.stopPropagation(); closeDetail()" aria-label="Close ${esc(label)} history">×</button>
+            </div>
+            <div class="p-4" id="detail-body-${site.id}">
+              ${history ? detailBodyMarkup(history) : '<div class="py-10 text-center font-mono text-[11px] text-app-text-faint">Loading performance history…</div>'}
+            </div>
+          </section>
         </div>
       </td>
     </tr>`;
+}
+
+function rowTone(r) {
+  if (r.mobileStatus === 'ERROR' || r.desktopStatus === 'ERROR') return 'row-error';
+  if (r.mobileStatus === 'ALERT' || r.desktopStatus === 'ALERT') return 'row-alert';
+  if (r.mobileStatus === 'PENDING' && r.desktopStatus === 'PENDING') return 'row-pending';
+  return 'row-ok';
 }
 
 function renderTable() {
@@ -475,7 +521,7 @@ function renderTable() {
   const body = document.getElementById('table-body');
 
   if (!sorted.length) {
-    body.innerHTML = '<tr><td colspan="5" class="empty">No sites match that filter.</td></tr>';
+    body.innerHTML = '<tr><td colspan="5" class="py-14 text-center text-sm text-app-text-faint">No sites match that filter.</td></tr>';
   } else {
     body.innerHTML = visible.map(r => {
       const host = (() => {
@@ -484,12 +530,12 @@ function renderTable() {
       })();
 
       const cell = (v, err) => typeof v === 'number'
-        ? `<span class="score ${scoreClass(v)}">${v}</span>`
-        : `<span class="site-host" title="${esc(err || '')}">—</span>`;
+        ? `<span class="score-chip ${scoreClass(v)}">${v}</span>`
+        : `<span class="font-mono text-[11px] text-app-text-faint" title="${esc(err || '')}">—</span>`;
 
       const selected = selectedSiteId === r.id;
       const row = `<tr
-        class="site-row${selected ? ' selected' : ''}"
+        class="site-row${selected ? ' is-selected' : ''}"
         id="site-row-${r.id}"
         tabindex="0"
         aria-selected="${selected}"
@@ -498,15 +544,18 @@ function renderTable() {
         onclick="openSite(${r.id})"
         onkeydown="rowKey(event, ${r.id})">
           <td title="${esc(r.url)}">
-            <div class="site-name-stack">
-              <span class="site-label">${esc(r.label || host)}</span>
-              <span class="site-host">${esc(host)}</span>
+            <div class="flex min-w-0 items-start gap-2.5">
+              <span class="site-status-dot ${rowTone(r)}" aria-hidden="true"></span>
+              <div class="min-w-0">
+                <div class="truncate text-[13px] font-semibold text-app-text sm:text-sm">${esc(r.label || host)}</div>
+                <div class="mt-0.5 truncate text-[11px] text-app-text-faint">${esc(host)}</div>
+              </div>
             </div>
           </td>
           <td data-label="Mobile">${cell(r.mobile, r.mobileError)}</td>
           <td data-label="Desktop">${cell(r.desktop, r.desktopError)}</td>
           <td data-label="Status">${badge(r)}</td>
-          <td data-label="Last checked" class="cell-date" title="${esc(fmtDate(r.lastChecked))}">${esc(relativeTime(r.lastChecked))}</td>
+          <td data-label="Last checked" class="font-mono text-[10px] text-app-text-faint sm:text-[11px]" title="${esc(fmtDate(r.lastChecked))}">${esc(relativeTime(r.lastChecked))}</td>
         </tr>`;
 
       return row + (selected ? detailRowMarkup(r) : '');
@@ -569,7 +618,7 @@ async function openSite(id, forceOpen = false) {
   } catch (e) {
     const currentBody = document.getElementById(`detail-body-${id}`);
     if (currentBody && selectedSiteId === id) {
-      currentBody.innerHTML = `<div class="empty detail-error">Could not load site history. ${esc(e.message)}</div>`;
+      currentBody.innerHTML = `<div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-800">Could not load site history. ${esc(e.message)}</div>`;
     }
   }
 }
@@ -606,6 +655,8 @@ async function loadAll() {
     filtered = [...ALL];
     SITE_HISTORY_CACHE.clear();
 
+    document.getElementById('app-version').textContent = payload.version ? `v${payload.version}` : 'v—';
+
     updateSummary(payload.scanCron);
     applyFilters();
 
@@ -614,12 +665,14 @@ async function loadAll() {
     }
   } catch (e) {
     document.getElementById('table-body').innerHTML =
-      `<tr><td colspan="5" class="empty">Could not load data. ${esc(e.message)}</td></tr>`;
+      `<tr><td colspan="5" class="py-14 text-center text-sm text-bad">Could not load data. ${esc(e.message)}</td></tr>`;
     document.getElementById('last-refreshed').textContent = 'Not loaded';
 
     const state = document.getElementById('runtime-state');
-    state.textContent = 'Unavailable';
-    state.className = 'runtime-state warn';
+    const dot = document.getElementById('snapshot-dot');
+    state.textContent = 'Monitoring data unavailable';
+    state.className = 'font-medium text-warn';
+    dot.className = 'h-2 w-2 rounded-full bg-warn-dot';
   } finally {
     btn.disabled = false;
     icon.classList.remove('spin');

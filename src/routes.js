@@ -1,6 +1,7 @@
 const express = require('express');
 const config = require('./config');
 const db = require('./db');
+const { version } = require('../package.json');
 
 const router = express.Router();
 
@@ -28,7 +29,7 @@ router.get('/api/data', (req, res) => {
       .sort()
       .at(-1) || null,
   }));
-  res.json({ threshold: config.threshold, scanCron: config.scanCron, sites: rows });
+  res.json({ version, threshold: config.threshold, scanCron: config.scanCron, sites: rows });
 });
 
 // Trend history — replaces getHistoryData()

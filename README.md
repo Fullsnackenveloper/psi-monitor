@@ -1,10 +1,10 @@
 # PSI Monitor
 
-A self-hosted uptime-style monitor for web performance. It scans a list of sites against the Google PageSpeed Insights API on a schedule, stores every measurement, and serves a live dashboard with current scores, alert states, and a score-trend chart.
+A self-hosted uptime-style monitor for web performance. It scans a list of sites against the Google PageSpeed Insights API on a schedule, stores every measurement, and serves a live dashboard with current scores, alert states, filtering, and on-demand per-site history.
 
 Live demo: **https://psi.msschermer.us**
 
-Built with Node.js, Express, and SQLite. Containerized with Docker, built and published by GitHub Actions, and deployed behind Caddy with automatic HTTPS.
+Built with Node.js, Express, SQLite, and Tailwind CSS. Containerized with Docker, built and published by GitHub Actions, and deployed behind Caddy with automatic HTTPS.
 
 ---
 
@@ -20,8 +20,8 @@ I rebuilt it from scratch as a standalone service so it could run on any server,
 
 - Scans each configured site for both **mobile** and **desktop** performance scores.
 - Stores **every** measurement, so history is real data rather than a running average.
-- Serves a dashboard with a sortable, filterable table, summary stats, configurable trend ranges, and a score-trend chart.
-- Opens an on-demand per-site history view from any dashboard row, including current scores and change from the prior measurement.
+- Serves a responsive Tailwind CSS dashboard with a sortable, filterable site list and compact summary metrics.
+- Opens an on-demand per-site history panel directly beneath the selected row, including current scores, change from the prior measurement, and a per-site trend chart.
 - Flags any site scoring below a configurable threshold as an **alert**, and surfaces the reason when a scan fails.
 - Runs scans automatically on a cron schedule, unattended.
 - Reports its own health at `/healthz` for the container runtime and reverse proxy.
@@ -58,6 +58,8 @@ That split keeps "build the thing" separate from "run the things," which is why 
 **SQLite via Node's built-in `node:sqlite`.** SQLite fits this workload exactly, a single small app with modest, periodic writes, and it needs no separate database container. Using Node's built-in driver means the data layer has **zero third-party dependencies** and no native compilation step. The whole app depends on just two packages: `express` and `node-cron`.
 
 **node-cron** replaces the platform's time-based triggers, with a guard so scans can't overlap.
+
+**Tailwind CSS 4.3.3** powers the dashboard UI. The source stylesheet lives in `src/tailwind.css`, while the production stylesheet is compiled into `public/styles.css`. The interface keeps the portfolio's blueprint visual system but uses Tailwind tokens and component layers for responsive states, filters, badges, score rows, and inline history panels.
 
 **Caddy** (in the infra repo) terminates TLS and reverse-proxies to the container, fetching and renewing Let's Encrypt certificates automatically.
 
@@ -111,15 +113,16 @@ The list of sites to monitor is seeded from `config/sites.seed.json` on first ru
 
 ## Running it locally
 
-Requires Node.js 24+ (for the built-in SQLite support).
+Requires Node.js 24+ (for the built-in SQLite support). This Tailwind migration adds new development dependencies, so run `npm install` once after applying the changes; it will refresh `package-lock.json`.
 
 ```bash
-npm install
-cp .env.example .env      # then add your API key
-npm start                 # starts the server + scheduler
-npm run dev               # local server with automatic restarts
-npm test                  # quick pre-push syntax check
-npm run scan              # trigger a scan manually
+npm install              # installs runtime + Tailwind build dependencies
+cp .env.example .env       # then add your API key
+npm run dev                # Tailwind watch build + Node server with automatic restarts
+npm run build:css          # one-off minified production CSS build
+npm test                   # production CSS build + server/client syntax checks
+npm start                  # starts the server + scheduler using compiled CSS
+npm run scan               # trigger a scan manually
 ```
 
 Then open `http://localhost:3000`.
@@ -150,15 +153,20 @@ Pushing to `main` triggers a GitHub Actions workflow that builds the image and p
 
 ```
 src/
-  config.js      # reads and validates environment configuration
-  db.js          # SQLite schema, seeding, and queries
-  scanner.js     # PageSpeed fetch, retry/backoff, scan loop
-  scheduler.js   # node-cron wiring with an overlap guard
-  routes.js      # /api/data, /api/history, /api/sites/:id/history, /healthz
-  server.js      # Express entry point
-public/          # dashboard (HTML, CSS, client JS)
+  config.js       # reads and validates environment configuration
+  db.js           # SQLite schema, seeding, and queries
+  scanner.js      # PageSpeed fetch, retry/backoff, scan loop
+  scheduler.js    # node-cron wiring with an overlap guard
+  routes.js       # /api/data, /api/history, /api/sites/:id/history, /healthz
+  server.js       # Express entry point
+  tailwind.css    # Tailwind theme, component layer, responsive table/card behavior
+public/
+  index.html      # dashboard markup + client JavaScript
+  styles.css      # generated Tailwind build output
 config/
-  sites.seed.json  # sites loaded on first run
+  sites.seed.json # sites loaded on first run
+scripts/
+  check.js        # pre-push syntax/build checks
 Dockerfile
 .github/workflows/build.yml
 ```
