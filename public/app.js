@@ -324,14 +324,10 @@ function renderSiteChart(history) {
     return '<div class="chart-empty">No score history available yet.</div>';
   }
 
-  // A six-hour cadence naturally yields about 28 cycles in seven days. Keep the
-  // graph in user-facing time rather than exposing the implementation concept of
-  // "30 records."
   const latestMs = allScans.at(-1).checkedMs;
   const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
   let scans = allScans.filter(scan => latestMs - scan.checkedMs <= SEVEN_DAYS_MS);
 
-  // If historical data is sparse, retain enough points to make the trend useful.
   if (scans.length < 2) scans = allScans.slice(-30);
   else scans = scans.slice(-30);
 
@@ -342,17 +338,16 @@ function renderSiteChart(history) {
 
   const compactChart = mobileListQuery.matches;
   const W = compactChart ? 520 : 900;
-  const H = compactChart ? 188 : 174;
+  const H = compactChart ? 170 : 156;
   const PAD = compactChart
-    ? { top: 18, right: 18, bottom: 34, left: 36 }
-    : { top: 18, right: 38, bottom: 30, left: 34 };
+    ? { top: 16, right: 18, bottom: 30, left: 36 }
+    : { top: 16, right: 38, bottom: 27, left: 34 };
   const axisFont = compactChart ? 10 : 9;
-  const pointRadius = compactChart ? 2.8 : 2.25;
+  const pointRadius = compactChart ? 2.6 : 2.15;
   const cw = W - PAD.left - PAD.right;
   const ch = H - PAD.top - PAD.bottom;
 
-  // PageSpeed scores have a meaningful fixed scale. Never auto-zoom the Y axis:
-  // it visually exaggerates ordinary PSI variance.
+  // PageSpeed scores have a meaningful fixed 0–100 scale.
   const sy = value => PAD.top + ch - (Math.max(0, Math.min(100, value)) / 100) * ch;
 
   const firstMs = scans[0].checkedMs;
@@ -360,56 +355,74 @@ function renderSiteChart(history) {
   const timeSpan = Math.max(1, lastMs - firstMs);
   const sx = scan => PAD.left + ((scan.checkedMs - firstMs) / timeSpan) * cw;
 
-  // A failed strategy deliberately breaks its line. We do not connect through a
-  // missing measurement because that would imply a score that never existed.
-  const pathFor = key => {
-    let path = '';
-    let drawing = false;
+  // Successful measurements remain the primary story. If one or more checks
+  // are unavailable between two successful scores, bridge that interval with a
+  // faint dashed segment rather than either pretending the failure never happened
+  // or fragmenting the entire trend line.
+  const segmentsFor = key => {
+    const segments = [];
+    let previousSuccess = null;
+    let interrupted = false;
 
     for (const scan of scans) {
       const value = scan[key];
       const failed = Boolean(scan[`${key}Error`]);
+      const success = Number.isFinite(value) && !failed;
 
-      if (!Number.isFinite(value) || failed) {
-        drawing = false;
+      if (!success) {
+        if (previousSuccess) interrupted = true;
         continue;
       }
 
-      path += `${drawing ? ' L' : ' M'} ${sx(scan)} ${sy(value)}`;
-      drawing = true;
+      if (previousSuccess) {
+        segments.push({
+          from: previousSuccess,
+          to: scan,
+          bridged: interrupted
+        });
+      }
+
+      previousSuccess = scan;
+      interrupted = false;
     }
 
-    return path;
+    return segments;
   };
 
   const target = Math.max(0, Math.min(100, THRESHOLD));
   const plotBottom = PAD.top + ch;
-  const failureY = plotBottom + 10;
+  const failureY = plotBottom + (compactChart ? 8 : 7);
+  const mobileColor = '#2563EB';
+  const desktopColor = '#078A57';
 
   let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block" role="img" aria-label="Seven-day PageSpeed score history for the selected site">`;
 
-  // Sparse, meaningful reference values instead of a dense auto-scaled grid.
   const guides = [0, 50, 100];
   guides.forEach(value => {
     svg += `<line x1="${PAD.left}" y1="${sy(value)}" x2="${W - PAD.right}" y2="${sy(value)}" stroke="#E5E7EB" stroke-width="1"/>`;
     svg += `<text x="${PAD.left - 7}" y="${sy(value) + 3}" font-size="${axisFont}" fill="#8B8D98" text-anchor="end" font-family="IBM Plex Mono, monospace">${value}</text>`;
   });
 
-  // Target gets its own directly labeled line, so the legend does not need to
-  // explain it.
   svg += `<line x1="${PAD.left}" y1="${sy(target)}" x2="${W - PAD.right}" y2="${sy(target)}" stroke="#8B8D98" stroke-width="1" stroke-dasharray="4,3"/>`;
   svg += `<text x="${W - PAD.right}" y="${sy(target) - 6}" font-size="${axisFont}" fill="#6B7280" text-anchor="end" font-family="IBM Plex Mono, monospace">Target ${target}</text>`;
 
-  svg += `<path d="${pathFor('desktop')}" fill="none" stroke="#078A57" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`;
-  svg += `<path d="${pathFor('mobile')}" fill="none" stroke="#2563EB" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const renderSegments = (key, color) => {
+    segmentsFor(key).forEach(segment => {
+      const dash = segment.bridged ? ' stroke-dasharray="4,4" opacity="0.45"' : '';
+      svg += `<line x1="${sx(segment.from)}" y1="${sy(segment.from[key])}" x2="${sx(segment.to)}" y2="${sy(segment.to[key])}" stroke="${color}" stroke-width="1.75" stroke-linecap="round"${dash}/>`;
+    });
+  };
+
+  renderSegments('desktop', desktopColor);
+  renderSegments('mobile', mobileColor);
 
   scans.forEach(scan => {
     if (Number.isFinite(scan.desktop) && !scan.desktopError) {
-      svg += `<circle cx="${sx(scan)}" cy="${sy(scan.desktop)}" r="${pointRadius}" fill="#078A57"><title>${esc(fmtDate(scan.checkedAt))} · Desktop ${scan.desktop}</title></circle>`;
+      svg += `<circle cx="${sx(scan)}" cy="${sy(scan.desktop)}" r="${pointRadius}" fill="${desktopColor}"><title>${esc(fmtDate(scan.checkedAt))} · Desktop ${scan.desktop}</title></circle>`;
     }
 
     if (Number.isFinite(scan.mobile) && !scan.mobileError) {
-      svg += `<circle cx="${sx(scan)}" cy="${sy(scan.mobile)}" r="${pointRadius}" fill="#2563EB"><title>${esc(fmtDate(scan.checkedAt))} · Mobile ${scan.mobile}</title></circle>`;
+      svg += `<circle cx="${sx(scan)}" cy="${sy(scan.mobile)}" r="${pointRadius}" fill="${mobileColor}"><title>${esc(fmtDate(scan.checkedAt))} · Mobile ${scan.mobile}</title></circle>`;
     }
 
     const failures = [
@@ -419,11 +432,8 @@ function renderSiteChart(history) {
 
     if (failures.length) {
       const x = sx(scan);
-      const size = compactChart ? 3.4 : 3;
-      svg += `<g><title>${esc(fmtDate(scan.checkedAt))} · ${esc(failures.join(' · '))}</title>`;
-      svg += `<line x1="${x - size}" y1="${failureY - size}" x2="${x + size}" y2="${failureY + size}" stroke="#D92D20" stroke-width="1.7" stroke-linecap="round"/>`;
-      svg += `<line x1="${x + size}" y1="${failureY - size}" x2="${x - size}" y2="${failureY + size}" stroke="#D92D20" stroke-width="1.7" stroke-linecap="round"/>`;
-      svg += `</g>`;
+      const half = failures.length > 1 ? 2.8 : 2;
+      svg += `<line x1="${x}" y1="${failureY - half}" x2="${x}" y2="${failureY + half}" stroke="#D92D20" stroke-width="1.35" stroke-linecap="round"><title>${esc(fmtDate(scan.checkedAt))} · ${esc(failures.join(' · '))}</title></line>`;
     }
   });
 
@@ -509,7 +519,8 @@ function strategySummary(strategy, site, history) {
 }
 
 function detailBodyMarkup(history, site) {
-  const hasFailures = history.some(h => h.errorMessage);
+  const failureCount = history.filter(h => h.errorMessage).length;
+  const hasFailures = failureCount > 0;
 
   return `
     <div class="strategy-summary-group">
@@ -520,12 +531,12 @@ function detailBodyMarkup(history, site) {
     <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 font-mono text-[9px] text-app-text-faint sm:mt-4 sm:gap-4 sm:text-[10px]" aria-label="Site history chart legend">
       <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-accent"></span>Mobile</span>
       <span class="inline-flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-good"></span>Desktop</span>
-      ${hasFailures ? '<span class="inline-flex items-center gap-1.5"><span class="font-mono text-[12px] leading-none text-bad">×</span>Failed check</span>' : ''}
+      ${hasFailures ? '<span class="inline-flex items-center gap-1.5"><span class="h-2 w-px rounded-full bg-bad"></span>Failed check</span>' : ''}
     </div>
 
     <div class="mt-2 min-h-32 rounded-md border border-app-border bg-app-surface p-1.5 sm:min-h-36 sm:p-3">${renderSiteChart(history)}</div>
     <p class="mt-2.5 text-[10px] leading-4 text-app-text-faint sm:mt-3 sm:text-[11px] sm:leading-5">
-      7-day score history${hasFailures ? ' · failed checks appear on the timeline' : ''}
+      7-day history${hasFailures ? ` · ${failureCount} failed check${failureCount === 1 ? '' : 's'}` : ''}
     </p>`;
 }
 
