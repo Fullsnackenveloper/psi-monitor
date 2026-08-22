@@ -56,6 +56,33 @@ for (const removedCopy of ['Performance snapshot', 'Monitored sites', 'Latest co
   }
 }
 
+const portfolioHeaderContract = [
+  'class="portfolio-sheet"',
+  'class="portfolio-masthead"',
+  'class="portfolio-masthead-name"',
+  'class="portfolio-masthead-role"',
+  'class="portfolio-masthead-links"',
+];
+for (const token of portfolioHeaderContract) {
+  if (!html.includes(token)) {
+    console.error(`Portfolio masthead contract is missing: ${token}`);
+    process.exit(1);
+  }
+}
+
+const tailwindSource = fs.readFileSync('src/tailwind.css', 'utf8');
+for (const token of [
+  'padding: 1.75rem 0 1rem;',
+  'border-bottom: 1px solid var(--color-ink);',
+  'letter-spacing: 0.14em;',
+  'gap: 1.25rem;',
+]) {
+  if (!tailwindSource.includes(token)) {
+    console.error(`Portfolio masthead styling contract is missing: ${token}`);
+    process.exit(1);
+  }
+}
+
 for (const id of ['runtime-state', 'snapshot-meta', 'site-controls', 'site-list-meta', 'site-results', 'table-body', 'app-version']) {
   if (!html.includes(`id="${id}"`)) {
     console.error(`Dashboard is missing required element #${id}.`);

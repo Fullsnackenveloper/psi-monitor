@@ -101,6 +101,66 @@
     background-size: 32px 32px;
   }
 
+  /* Portfolio masthead — keep these values aligned with msschermer.us. */
+  .portfolio-sheet {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 clamp(1.25rem, 5vw, 4rem) 4rem;
+  }
+
+  .portfolio-masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 1.75rem 0 1rem;
+    border-bottom: 1px solid var(--color-ink);
+    line-height: 1.55;
+  }
+
+  .portfolio-masthead-name {
+    font-family: var(--font-mono);
+    font-size: clamp(15px, 2vw, 17px);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+
+  .portfolio-masthead-role {
+    margin-top: 2px;
+    font-size: 13px;
+    color: var(--color-ink-soft);
+  }
+
+  .portfolio-masthead-links {
+    display: flex;
+    gap: 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+
+  .portfolio-masthead-links a {
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--color-rule);
+    color: var(--color-ink-soft);
+    text-decoration: none;
+    transition: color .15s, border-color .15s;
+  }
+
+  .portfolio-masthead-links a:hover,
+  .portfolio-masthead-links a:focus-visible {
+    color: var(--color-brand);
+    border-color: var(--color-brand);
+  }
+
+  .portfolio-masthead-links a:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 3px;
+  }
+
   .skip-link {
     position: absolute;
     left: -9999px;
